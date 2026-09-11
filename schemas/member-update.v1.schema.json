@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/member-update.v1.schema.json",
+  "title": "member-update version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "role",
+    "base_revision",
+    "active"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "role": {
+      "enum": [
+        "member",
+        "admin"
+      ]
+    },
+    "base_revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740990
+    },
+    "active": {
+      "type": "boolean"
+    }
+  }
+}

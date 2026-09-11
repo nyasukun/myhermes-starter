@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myhermes-companion"
+version = "0.3.0"
+description = "Owner-scoped Hermes enrollment and safe revisioned synchronization"
+requires-python = ">=3.11"
+dependencies = ["cryptography==46.0.5", "keyring==25.7.0", "PyYAML==6.0.3", "opentelemetry-sdk==1.44.0", "opentelemetry-exporter-otlp-proto-common==1.44.0"]
+
+[project.scripts]
+myhermes = "myhermes.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+myhermes = ["monitoring-manifest.json", "sync-status-manifest.json", "data/hermes-skills/*/SKILL.md"]
+
+[project.optional-dependencies]
+dev = ["ruff==0.15.6"]
+
+[tool.ruff]
+line-length = 120

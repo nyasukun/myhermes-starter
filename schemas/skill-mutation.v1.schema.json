@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nyasukun/myhermes-starter/schemas/skill-mutation.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "update_id",
+    "base_revision",
+    "skill_id",
+    "package"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "update_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "base_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "skill_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "package": {
+      "oneOf": [
+        {
+          "$ref": "skill-package.v1.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolves_update_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "$comment": "Non-null package.skill_id must equal the envelope skill_id. Ownership is authenticated, not supplied here."
+}

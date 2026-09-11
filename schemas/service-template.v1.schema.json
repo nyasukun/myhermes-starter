@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/service-template.v1.schema.json",
+  "title": "service-template version 1",
+  "$comment": "Public runtime additionally enforces cross-field capability consistency, case-insensitive resource uniqueness, grant subset and ready-binding verification rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "template_id",
+    "version",
+    "display_name",
+    "description",
+    "connector_id",
+    "connector_version",
+    "service",
+    "auth",
+    "supported_os",
+    "input_fields",
+    "setup",
+    "connection_test",
+    "capabilities",
+    "resource_rules",
+    "related_skills",
+    "usage_notice"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "template_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 2000
+    },
+    "connector_id": {
+      "const": "github"
+    },
+    "connector_version": {
+      "const": "1.0.0"
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_url",
+        "api_version",
+        "allowed_hosts"
+      ],
+      "properties": {
+        "base_url": {
+          "const": "https://api.github.com"
+        },
+        "api_version": {
+          "const": "2026-03-10"
+        },
+        "allowed_hosts": {
+          "const": [
+            "api.github.com"
+          ]
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "required_permissions"
+      ],
+      "properties": {
+        "method": {
+          "const": "github_fine_grained_pat"
+        },
+        "required_permissions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "metadata:read",
+              "issues:read"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      }
+    },
+    "supported_os": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "ubuntu",
+          "macos"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
+    "input_fields": {
+      "const": [
+        {
+          "name": "resources",
+          "type": "github_repository_list",
+          "required": true
+        }
+      ]
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "procedure_id",
+        "procedure_version"
+      ],
+      "properties": {
+        "procedure_id": {
+          "const": "github-fine-grained-pat-v1"
+        },
+        "procedure_version": {
+          "const": "1.0.0"
+        }
+      }
+    },
+    "connection_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "procedure_id",
+        "required_capabilities"
+      ],
+      "properties": {
+        "procedure_id": {
+          "const": "github-read-test-v1"
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "repository.read",
+              "issues.read"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "repository.read",
+          "issues.read"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true
+    },
+    "resource_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "repository"
+        ],
+        "properties": {
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+              },
+              {
+                "const": "*"
+              }
+            ]
+          },
+          "repository": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,100}$",
+                "not": {
+                  "enum": [
+                    ".",
+                    ".."
+                  ]
+                }
+              },
+              {
+                "const": "*"
+              }
+            ]
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true
+    },
+    "related_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "skill_id",
+          "version"
+        ],
+        "properties": {
+          "skill_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$"
+          }
+        }
+      },
+      "minItems": 0,
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "usage_notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "text"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
+    }
+  }
+}

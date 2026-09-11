@@ -1,0 +1,427 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/relay-request.v1.schema.json",
+  "title": "MyHermes text/tool relay request v1",
+  "description": "Apply the public runtime validator as well: configured alias, byte limits and cross-field constraints are mandatory.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "system",
+                  "developer",
+                  "user"
+                ]
+              },
+              "content": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 131072
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "type": {
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 0,
+                          "maxLength": 131072
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "text"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 32
+                  }
+                ]
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+              }
+            },
+            "required": [
+              "role",
+              "content"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "const": "tool"
+              },
+              "content": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 131072
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "type": {
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 0,
+                          "maxLength": 131072
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "text"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 32
+                  }
+                ]
+              },
+              "tool_call_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "role",
+              "content",
+              "tool_call_id"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "const": "assistant"
+              },
+              "content": {
+                "oneOf": [
+                  {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 0,
+                        "maxLength": 131072
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "type": {
+                              "const": "text"
+                            },
+                            "text": {
+                              "type": "string",
+                              "minLength": 0,
+                              "maxLength": 131072
+                            }
+                          },
+                          "required": [
+                            "type",
+                            "text"
+                          ]
+                        },
+                        "minItems": 1,
+                        "maxItems": 32
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tool_calls": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "type": {
+                      "const": "function"
+                    },
+                    "function": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                        },
+                        "arguments": {
+                          "type": "string",
+                          "minLength": 0,
+                          "maxLength": 65536
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "arguments"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "function"
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 32
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 256
+    },
+    "stream": {
+      "type": "boolean"
+    },
+    "max_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32768,
+      "description": "Company policy can impose a lower maximum."
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "top_p": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "stop": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      ]
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "function"
+          },
+          "function": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 16384
+              },
+              "parameters": {
+                "type": "object",
+                "description": "Public runtime additionally checks depth, item counts, remote refs and whole-request byte cap."
+              },
+              "strict": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "function"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 64
+    },
+    "tool_choice": {
+      "oneOf": [
+        {
+          "enum": [
+            "auto",
+            "none",
+            "required"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "function"
+            },
+            "function": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "function"
+          ]
+        }
+      ]
+    },
+    "parallel_tool_calls": {
+      "type": "boolean"
+    },
+    "response_format": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "text",
+                "json_object"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "json_schema"
+            },
+            "json_schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 16384
+                },
+                "schema": {
+                  "type": "object",
+                  "$comment": "Runtime enforces depth <=16, <=256 keys/items per level, bounded strings/numbers, and local #/ references only."
+                },
+                "strict": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "schema"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "json_schema"
+          ]
+        }
+      ]
+    },
+    "stream_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_usage": {
+          "const": true
+        }
+      },
+      "required": [
+        "include_usage"
+      ]
+    },
+    "reasoning_effort": {
+      "const": "none"
+    }
+  },
+  "required": [
+    "model",
+    "messages"
+  ]
+}

@@ -1,0 +1,870 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nyasukun/myhermes-starter/schemas/audit-batch.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_version",
+    "client_version",
+    "batch_id",
+    "stream_id",
+    "first_sequence",
+    "previous_batch_sha256",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "manifest_version": {
+      "const": "1.0.0"
+    },
+    "client_version": {
+      "type": "string",
+      "pattern": "^\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}$"
+    },
+    "batch_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "stream_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "first_sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740891
+    },
+    "previous_batch_sha256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "enrollment"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "runtime_start"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "runtime_stop"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "runtime_update"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "connection_change"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "sync"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "skill_change"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "tool"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "tool_kind": {
+                    "enum": [
+                      "read",
+                      "write",
+                      "search",
+                      "execute",
+                      "connector",
+                      "other"
+                    ]
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "model"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "model_alias": {
+                    "const": "economy"
+                  },
+                  "prompt_tokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "completion_tokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "cost_nano": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000000
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "sequence",
+              "client_time",
+              "kind",
+              "attributes"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "sequence": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "client_time": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "kind": {
+                "const": "delivery"
+              },
+              "attributes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "outcome"
+                ],
+                "properties": {
+                  "outcome": {
+                    "enum": [
+                      "ok",
+                      "failed",
+                      "conflict",
+                      "cancelled",
+                      "unknown"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "connection_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "request_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "sent_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "dropped_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  }
+                }
+              },
+              "trace_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "span_id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{16}$"
+              }
+            },
+            "dependentRequired": {
+              "trace_id": [
+                "span_id"
+              ],
+              "span_id": [
+                "trace_id"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$comment": "Canonical JSON is signed as ES256 compact JWS; raw transport application/jose. Runtime checks unique IDs, contiguous sequences, paired nonzero trace/span IDs, current timestamp window, previous accepted batch hash and signature against the authenticated installation key."
+}

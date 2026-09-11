@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/relay-receipt.v1.schema.json",
+  "title": "MyHermes body-free relay receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "person_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "installation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "alias": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "server_request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cursor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "day": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reservation_nano": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "state": {
+      "enum": [
+        "registered",
+        "completed",
+        "failed",
+        "cancelled",
+        "timeout"
+      ]
+    },
+    "usage_state": {
+      "enum": [
+        "unknown",
+        "known"
+      ]
+    },
+    "failure_code": {
+      "oneOf": [
+        {
+          "enum": [
+            "upstream_rejected",
+            "upstream_unavailable",
+            "upstream_invalid",
+            "upstream_policy_mismatch",
+            "stream_interrupted",
+            "client_cancelled",
+            "relay_timeout"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "generation_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "returned_model": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "returned_provider": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cost_nano": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "prompt_tokens": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "completion_tokens": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "total_tokens": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "usage_source": {
+      "enum": [
+        "response",
+        "generation",
+        null
+      ]
+    },
+    "reconciled_at": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "person_id",
+    "installation_id",
+    "alias",
+    "model",
+    "provider",
+    "request_id",
+    "server_request_id",
+    "cursor",
+    "day",
+    "created_at",
+    "updated_at",
+    "reservation_nano",
+    "state",
+    "usage_state",
+    "failure_code",
+    "generation_id",
+    "returned_model",
+    "returned_provider",
+    "cost_nano",
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "usage_source",
+    "reconciled_at"
+  ],
+  "$comment": "Internal keyed request fingerprint is deliberately excluded from every owner/admin/duplicate receipt."
+}

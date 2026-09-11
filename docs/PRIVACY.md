@@ -1,0 +1,45 @@
+# Privacy and data flow
+
+MyHermes uses separate paths for owner content, connection metadata, inference and company monitoring. The public implementations and manifests define collection and storage; a private deployment must not add hidden fields or enable body logging. Source repositories contain implementation and synthetic fixtures, never credentials, real conversations or owner content.
+
+## Owner content and local runtime
+
+The persona API transfers only `SOUL.md`, `memories/MEMORY.md` and `memories/USER.md`. The separate personal skill API transfers explicitly imported complete packages, including their references, scripts and binary assets. These are the authenticated owner's content, available across that owner's installations. Other users and ordinary administrators have no content retrieval or impersonation endpoint. Personal skills never become company publications automatically. Company skill packages use their separate distribution API and declared audience.
+
+Local SQLite outboxes, conflict candidates, apply journals and recovery backups necessarily contain owner content. They use owner-only filesystem permissions and must stay out of Git and company telemetry. Credentials use the native macOS Keychain or Ubuntu Secret Service, with no plaintext fallback. Local synchronization state is not the credential store. The companion does not synchronize the whole `HERMES_HOME`, session database, arbitrary files or unregistered skill directories.
+
+Hermes itself can retain conversations, session state and tool activity locally according to its configuration. A managed MyHermes launch does not make Hermes stateless or erase its local history. Owner-approved tools can process documents, messages and other content; that capability is distinct from the narrow company monitoring collector. The two bundled authoring skills are public package assets, projected into the same runtime as company and personal skills.
+
+Cloud content storage and access controls are not end-to-end encryption. Infrastructure operators retain their infrastructure privileges even though ordinary administrator APIs cannot retrieve personal content. See [personality synchronization](COMPANION.md), [skill synchronization](SKILL_SYNC.md) and [package distribution](DISTRIBUTION.md).
+
+## Enrollment and connections
+
+The control plane stores enrollment/environment metadata, public keys, owner association, versions, revocation status and synchronization revision/timestamps. Authentication stores a hash of each temporary enrollment code and short-lived replay records. Issued access JWTs are not persisted by the application; private signing keys remain in the installation's native credential store.
+
+The [public sync-status collection specification](SYNC_STATUS.md) separates server-observed upload receipts and API authentication time from the latest **client-reported** locally applied personality revision. Only an explicit device ACK updates that report, with a server receipt timestamp; fetching content alone does not. Owner and administrator environment lists expose these metadata fields, never content. The report can become stale after local changes and does not prove filesystem state or Hermes consumption. It is retained with installation/revocation metadata without an automatic expiry, separately from the audit/OTLP event stores.
+
+Connection APIs store service/template versions, account and resource metadata, explicit usage grants and installation binding/test status. Registering a personal account records permitted work use; it does not authorize administrators or other users to read its content or act through it. Account kind alone does not trigger an extra approval on each use.
+
+GitHub personal access tokens remain in the owning installation's native credential store. Fixed connector code sends them only to the permitted GitHub API over TLS; templates cannot supply executable shell or arbitrary endpoints. Authorized repository and issue reads return content to the owner's process when explicitly requested. The company connection metadata API does not receive that content or the token. Default CLI output is metadata; explicit owner exports can contain private content and require private storage. See [connection behavior and limitations](CONNECTIONS.md).
+
+## Inference relay
+
+The company OpenRouter credential stays server-side. Hermes receives a process-only credential for the local bridge; the bridge authenticates to the company relay with its installation key and DPoP. Neither the bridge nor the relay records request or response bodies in application storage or logs.
+
+Inference still transmits the relevant messages, loaded persona/memory/skills, tool definitions and tool results to the relay and inference provider. They are processed in memory to forward ordinary responses, SSE and tool calling. Body-free accounting is not a claim that those services never see the content. The public routing rules require the fixed provider policy, no provider fallback, `data_collection:deny` and `zdr:true`; actual vendor eligibility and the deploying account's privacy conditions remain external requirements.
+
+The relay persists only the public metadata/accounting projection. Its internal keyed request fingerprint is not a public prompt hash and is excluded from owner, administrator and duplicate receipts. Server-observed usage is distinct from client-reported events. Unknown cost remains reserved, never silently converted to zero. An optional administrator recovery lookup fetches only metadata for an already observed generation; it cannot replay inference or fetch generation content. Known relay receipts expire 90 days after the last settlement/outcome update and after their ID admission window closes. Unknown records/reservations remain indefinitely, with a bounded capacity that rejects new requests when full. A persistent clock floor and coverage boundary are retained to prevent expired-ID replay and disclose partial historical totals. See the exact fields and accounting rules in [RELAY.md](RELAY.md) and its separate public relay manifest.
+
+## Company monitoring
+
+Monitoring is implemented and active in instrumented commands and managed runtime hooks. The companion emits signed audit batches and real OpenTelemetry SDK OTLP/HTTP protobuf traces. The fixed allowlist contains activity/outcome/tool/model enums, counts, durations, timestamps, versions and opaque identifiers. It excludes prompts, responses, persona, memory, skills, document/email bodies, tool arguments/results, paths, URLs, raw errors, cookies and authentication headers. A narrow post-tool hook observes fixed tool kind, outcome and duration; it does not read the arguments or returned content. There is no general library auto-instrumentation, filesystem scan, anomaly engine or automatic sanction.
+
+Local metadata queues are separate from owner content databases. Stored metadata and every present protobuf field are validated before inspection or transmission. Server validation rejects an entire invalid batch; only a fixed rejection code and permitted subject/timing metadata are retained, without the rejected payload or its hash. Accepted client reports, OTLP projections and directly observed relay accounting remain separate sources. Signatures establish the enrolled sender, not the truth of a device's report.
+
+The owner and authorized administrators can inspect the same published monitoring projections. `myhermes monitoring manifest`, `inspect --include-wire` and explicit exports make the local collection visible. Accepted audit/trace records and stream heads expire 90 days after receipt; rejection receipts expire after 30 days. Pending local events expire after 30 days, and local delivered history is bounded by count and 90 days. These limits do not apply to owner content history or the separate relay ledger. The executable [monitoring manifest and contract](MONITORING.md) specify all fields, readers, limits, destinations, retries and exclusions.
+
+## Deletion, revocation and infrastructure
+
+Deleting persona or personal skill content records a tombstone and retains revision/conflict history for recovery. It is not immediate erasure from history, local backups or infrastructure backups. Withdrawing a company publication stops future authorized distribution; modified local trees are preserved for the owner to recover. Revocation blocks new authenticated API use and cannot retract content or credentials already downloaded to a device. Permanent erasure and infrastructure backup retention require an explicit operational process.
+
+Cloudflare Access, edge services and inference providers may process connection metadata outside these application stores. Worker automatic observability/body logging is disabled by default; the deployment must disclose enabled infrastructure products, retention and privileged access. Do not describe unknown vendor retention as zero or enable body-caching gateways/debug logs without changing the reviewed public policy.

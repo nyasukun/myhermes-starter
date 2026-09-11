@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/connection-create.v1.schema.json",
+  "title": "connection-create version 1",
+  "$comment": "Public runtime additionally enforces cross-field capability consistency, case-insensitive resource uniqueness, grant subset and ready-binding verification rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "template_id",
+    "template_version",
+    "account_kind",
+    "display_name",
+    "account",
+    "management",
+    "project",
+    "resources",
+    "usage_grant"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "template_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "template_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$"
+    },
+    "account_kind": {
+      "enum": [
+        "company",
+        "client",
+        "personal"
+      ]
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_account_id",
+        "login"
+      ],
+      "properties": {
+        "provider_account_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        },
+        "login": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+        }
+      }
+    },
+    "management": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "label"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "company",
+            "client",
+            "individual"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "project": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "label"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        }
+      ]
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "owner",
+          "repository"
+        ],
+        "properties": {
+          "kind": {
+            "const": "github_repository"
+          },
+          "owner": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+          },
+          "repository": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,100}$",
+            "not": {
+              "enum": [
+                ".",
+                ".."
+              ]
+            }
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true
+    },
+    "usage_grant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notice_version",
+        "accepted",
+        "operations",
+        "resources"
+      ],
+      "properties": {
+        "notice_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "accepted": {
+          "const": true
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "repository.read",
+              "issues.read"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "owner",
+              "repository"
+            ],
+            "properties": {
+              "kind": {
+                "const": "github_repository"
+              },
+              "owner": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+              },
+              "repository": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,100}$",
+                "not": {
+                  "enum": [
+                    ".",
+                    ".."
+                  ]
+                }
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

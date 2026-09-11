@@ -1,0 +1,18 @@
+{
+  "name": "myhermes-starter",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "test": "npm --prefix packages/core test",
+    "check": "npm run typecheck && npm test && node tools/check-contracts.mjs && node tools/build-m2-m3-schemas.mjs --check",
+    "typecheck": "tsc --noEmit",
+    "pack:core": "npm pack ./packages/core --ignore-scripts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

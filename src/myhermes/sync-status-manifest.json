@@ -1,0 +1,60 @@
+{
+  "schema_version": "1",
+  "version": "1.0.0",
+  "destination": "/v1/sync/ack",
+  "manifest_endpoint": "/v1/sync/status-manifest",
+  "authentication": "installation-bound DPoP; owner and installation are derived from authentication",
+  "submitted_fields": [
+    "schema_version",
+    "revision"
+  ],
+  "request_max_bytes": 1024,
+  "trust": "client_reported; key possession authenticates the sender, not filesystem state or Hermes consumption",
+  "trigger": "after successful atomic journal application leaves the exact full remote baseline in local files with no pending or conflicted content updates; never on download alone or partial application preserving local changes",
+  "time": "server received_at only; no client-supplied time; equal or lower retries never refresh it",
+  "validation": "nonnegative safe-integer revision; at most owner server head; monotonic per installation; no browser submissions",
+  "storage": {
+    "subject": [
+      "person_id",
+      "installation_id"
+    ],
+    "latest_report": [
+      "applied_revision",
+      "applied_revision_received_at"
+    ],
+    "separate_upload_observation": [
+      "sync_revision",
+      "last_sync_at"
+    ],
+    "separate_authentication_observation": [
+      "last_seen_at"
+    ],
+    "history": false,
+    "retention": "latest report retained with installation and revocation metadata without automatic expiry"
+  },
+  "response_fields": [
+    "status",
+    "source",
+    "applied_revision",
+    "received_at"
+  ],
+  "readers": [
+    "authenticated owner for own installations",
+    "company administrator for installation metadata only"
+  ],
+  "separation": "D1 installation metadata; no persona R2 read or content storage; no audit/OTLP event or relay accounting writes",
+  "exclusions": [
+    "content",
+    "file names/paths",
+    "SOUL",
+    "memory",
+    "skills",
+    "session state",
+    "client timestamps",
+    "IP",
+    "User-Agent",
+    "secrets",
+    "request body logs"
+  ],
+  "limitations": "historical application report; later local changes, unresolved conflicts, rollback and Hermes in-memory state are not observed; sync attempt outcomes use the separate public audit/OTLP activity contract"
+}

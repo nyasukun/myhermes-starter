@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://myhermes.example/schemas/member-create.v1.schema.json",
+  "title": "member-create version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "role",
+    "access_subject"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "role": {
+      "enum": [
+        "member",
+        "admin"
+      ]
+    },
+    "access_subject": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "version": "1.3.0",
+  "source": "server_observed",
+  "body_storage": false,
+  "persisted_fields": [
+    "cursor",
+    "person_id",
+    "installation_id",
+    "request_id",
+    "server_request_id",
+    "request_hash (internal HMAC only; never projected)",
+    "alias",
+    "model",
+    "generation_model (immutable admission policy identity)",
+    "provider",
+    "generation_id",
+    "returned_model",
+    "returned_provider",
+    "day",
+    "created_at",
+    "updated_at",
+    "reservation_nano",
+    "cost_nano",
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "state",
+    "usage_state",
+    "failure_code",
+    "finish_value (internal exact metadata receipt)",
+    "usage_source",
+    "reconciled_at",
+    "reconcile_value (internal exact metadata receipt)",
+    "retire_after_ms (internal known-row retention deadline)"
+  ],
+  "settings": [
+    "frozen (admission stops after observed cost exceeds reservation)",
+    "clock_floor_ms (monotonic admission/retention clock)",
+    "history_complete_since (timestamp after newest deleted request start; null before any purge)"
+  ],
+  "usage_sources": [
+    "response",
+    "generation"
+  ],
+  "unknown_usage": "Reservation remains outstanding; absent cost is never zero.",
+  "reconciliation": {
+    "endpoint": "https://openrouter.ai/api/v1/generation",
+    "minimum_age_ms": 600000,
+    "timeout_ms": 10000,
+    "max_response_bytes": 32768,
+    "requires": [
+      "recorded generation ID",
+      "matching original model/provider",
+      "terminal finish reason",
+      "explicit total_cost",
+      "native token counts"
+    ],
+    "client_values_allowed": false,
+    "manual_zero_or_unfreeze": false
+  },
+  "retention": {
+    "known_ms": 7776000000,
+    "known_clock": "last settlement or outcome update; additionally after embedded ID admission expires",
+    "unknown": "indefinite; reservation and frozen state are never cleared by retention",
+    "max_records": 100000,
+    "batch_size": 100,
+    "admission": {
+      "id_version": 7,
+      "max_age_ms": 2592000000,
+      "future_tolerance_ms": 300000,
+      "legacy": "retained receipts only; absent non-v7 IDs rejected"
+    },
+    "idempotency": "Existing receipts checked first; purged IDs cannot be admitted again; persistent clock floor prevents rollback replay; capacity rejects new inference.",
+    "coverage": "summary history_complete_since identifies retention-limited history"
+  },
+  "viewers": [
+    "authenticated owner for own receipts",
+    "browser administrators for metadata only"
+  ]
+}

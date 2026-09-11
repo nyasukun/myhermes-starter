@@ -1,0 +1,19 @@
+{
+  "name": "@myhermes/core",
+  "version": "0.3.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

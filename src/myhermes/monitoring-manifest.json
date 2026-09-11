@@ -1,0 +1,206 @@
+{
+  "schema_version": "1",
+  "version": "1.0.0",
+  "destinations": {
+    "audit": "/v1/monitoring/audit",
+    "traces": "/v1/monitoring/traces",
+    "origin": "configured authenticated MyHermes origin only"
+  },
+  "transport": {
+    "audit": "application/jose; ES256 compact JWS",
+    "traces": "OTLP/HTTP application/x-protobuf; uncompressed traces only",
+    "authentication": "installation-bound DPoP"
+  },
+  "delivery": {
+    "sampling": 1,
+    "batch_max_events": 100,
+    "flush": "after command/session; offline batches retried on next managed command; no background host monitoring",
+    "maximum_offline_days": 30,
+    "queue_max_events": 10000
+  },
+  "events": [
+    "enrollment",
+    "runtime_start",
+    "runtime_stop",
+    "runtime_update",
+    "connection_change",
+    "sync",
+    "skill_change",
+    "tool",
+    "model",
+    "delivery"
+  ],
+  "required_attributes": [
+    "outcome"
+  ],
+  "optional_attributes": [
+    "duration_ms",
+    "connection_id",
+    "tool_kind",
+    "model_alias",
+    "prompt_tokens",
+    "completion_tokens",
+    "cost_nano",
+    "request_id",
+    "sent_count",
+    "dropped_count"
+  ],
+  "identifiers": [
+    "event_id",
+    "stream_id",
+    "sequence",
+    "batch_id",
+    "previous_batch_sha256",
+    "trace_id",
+    "span_id",
+    "parent_span_id",
+    "request_id"
+  ],
+  "otlp": {
+    "span_name": "myhermes.activity",
+    "scope_name": "myhermes",
+    "service_name": "myhermes",
+    "resource_attributes": [
+      "service.name",
+      "service.version"
+    ],
+    "span_attributes": [
+      "myhermes.manifest_version",
+      "myhermes.event_id",
+      "myhermes.sequence",
+      "myhermes.client_time",
+      "myhermes.kind",
+      "myhermes.outcome",
+      "myhermes.duration_ms",
+      "myhermes.connection_id",
+      "myhermes.tool_kind",
+      "myhermes.model_alias",
+      "myhermes.prompt_tokens",
+      "myhermes.completion_tokens",
+      "myhermes.cost_nano",
+      "myhermes.request_id",
+      "myhermes.sent_count",
+      "myhermes.dropped_count"
+    ],
+    "events": false,
+    "links": false,
+    "status_message": false
+  },
+  "exclusions": [
+    "prompt",
+    "response",
+    "conversation",
+    "SOUL",
+    "memory",
+    "personal skill content",
+    "document/email content",
+    "search terms",
+    "file names/paths",
+    "commands",
+    "tool arguments/results",
+    "exception text",
+    "arbitrary span names",
+    "URLs",
+    "authentication headers",
+    "cookies",
+    "secrets"
+  ],
+  "retention_days": {
+    "accepted": 90,
+    "rejected": 30
+  },
+  "viewers": [
+    "authenticated owner for own records",
+    "company administrators for metadata only"
+  ],
+  "trust": {
+    "audit": "client_reported_signed; possession and chain continuity, not device truth",
+    "traces": "client_reported; DPoP transport",
+    "relay": "server_observed; separate authoritative usage ledger"
+  },
+  "stored_projections": {
+    "authenticated_subject": [
+      "person_id",
+      "installation_id"
+    ],
+    "audit_event": [
+      "cursor",
+      "event_id",
+      "batch_id",
+      "event",
+      "received_at"
+    ],
+    "otlp_span": [
+      "cursor",
+      "event_id",
+      "span",
+      "received_at"
+    ],
+    "span_fields": [
+      "trace_id",
+      "span_id",
+      "parent_span_id",
+      "start_time_unix_nano",
+      "end_time_unix_nano",
+      "status_code",
+      "client_version",
+      "event"
+    ],
+    "event_fields": [
+      "event_id",
+      "sequence",
+      "client_time",
+      "kind",
+      "attributes",
+      "trace_id",
+      "span_id"
+    ],
+    "audit_batch": [
+      "cursor",
+      "batch_id",
+      "stream_id",
+      "batch_sha256",
+      "batch",
+      "signature",
+      "received_at"
+    ],
+    "rejection": [
+      "cursor",
+      "transport",
+      "code",
+      "received_at"
+    ],
+    "stream_head": [
+      "stream_id",
+      "sequence",
+      "batch_sha256",
+      "received_at"
+    ],
+    "sql_indexes": [
+      "kind",
+      "outcome",
+      "request_id"
+    ],
+    "list_envelope": [
+      "person_id",
+      "installation_id",
+      "manifest_version",
+      "source",
+      "trust",
+      "records",
+      "next_before"
+    ]
+  },
+  "persisted_server_metadata": [
+    "authenticated person_id",
+    "authenticated installation_id",
+    "received_at",
+    "validation outcome",
+    "fixed rejection code",
+    "public normalized event/span fields",
+    "accepted batch hash/signature",
+    "request_id correlation"
+  ],
+  "infrastructure": "Application storage excludes IP and User-Agent. Cloudflare Access/edge may process operational network metadata; deployment must disclose its vendor retention. Worker automatic observability is disabled by default.",
+  "changes": "Any additional field, model alias, sampling or retention change requires a new public manifest/module version and reviewed private pin."
+}

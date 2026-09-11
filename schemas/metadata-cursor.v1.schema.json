@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decoded canonical metadata cursor (UTF-8 canonical JSON, unpadded base64url)",
+  "oneOf": [
+    {"type":"object","additionalProperties":false,"required":["kind","keys"],"properties":{"kind":{"const":"templates"},"keys":{"type":"array","minItems":2,"maxItems":2,"prefixItems":[{"type":"string","pattern":"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"},{"type":"string","pattern":"^(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})\\.(0|[1-9][0-9]{0,5})$"}]}}},
+    {"type":"object","additionalProperties":false,"required":["kind","keys"],"properties":{"kind":{"const":"content_editors"},"keys":{"type":"array","minItems":2,"maxItems":2,"prefixItems":[{"type":"string","minLength":1,"maxLength":128},{"enum":["template","skill"]}]}}}
+  ]
+}

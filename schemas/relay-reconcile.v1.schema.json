@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MyHermes relay reconciliation request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nyasukun/myhermes-starter/schemas/enrollment.v1.schema.json",
+  "title": "MyHermes environment enrollment v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "label", "os", "arch", "client_version", "public_jwk"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "label": {"type": "string", "minLength": 1, "maxLength": 80},
+    "os": {"enum": ["ubuntu", "macos"]},
+    "arch": {"type": "string", "minLength": 1, "maxLength": 32},
+    "client_version": {"type": "string", "minLength": 1, "maxLength": 32},
+    "public_jwk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kty", "crv", "x", "y"],
+      "properties": {"kty": {"const": "EC"}, "crv": {"const": "P-256"}, "x": {"type": "string", "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"}, "y": {"type": "string", "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$"}}
+    }
+  }
+}
