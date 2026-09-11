@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 
@@ -34,6 +35,7 @@ from .local_config import canonical_identifier
 UPSTREAM_URL = "https://github.com/NousResearch/hermes-agent.git"
 UPSTREAM_VERSION = "v2026.9.7"
 UPSTREAM_COMMIT = "2237be355906fbe6065ce1815711eee52b2d646e"
+_COMMAND_TIMEOUT_SECONDS = 1200
 
 
 def operating_system():
@@ -52,15 +54,111 @@ def operating_system():
 
 
 def checked(command, *, cwd=None):
+    if threading.current_thread() is not threading.main_thread():
+        raise CompanionError("runtime_main_thread_required", "Runtime operations must run on the CLI's main thread.", 3)
+    child, reason, deadline, requested_signal = None, None, None, None
+    previous = {}
+    completed, killed = False, False
+    expires = time.monotonic() + _COMMAND_TIMEOUT_SECONDS
+
+    def send_group(kind):
+        nonlocal killed
+        if child is not None:
+            try:
+                # Only this newly created session/process group, never the
+                # caller's terminal or an unrelated installation's processes.
+                os.killpg(child.pid, kind)
+            except ProcessLookupError:
+                pass
+            if kind == signal.SIGKILL:
+                killed = True
+
+    def stop(kind, _frame, *, cause="interrupted"):
+        nonlocal reason, deadline, requested_signal
+        if reason is None:
+            reason = cause
+            requested_signal = kind
+            deadline = time.monotonic() + _TERMINATION_GRACE_SECONDS
+        send_group(kind)
+
     try:
-        result = subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True, timeout=1200)
-        return result.stdout.strip()
+        for kind in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            previous[kind] = signal.getsignal(kind)
+            signal.signal(kind, stop)
+        child = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            start_new_session=True,
+        )
+        if reason is not None:
+            # Remember a request during Popen creation until the owned group
+            # exists. The original deadline is not restarted by this delivery.
+            send_group(requested_signal)
+        while True:
+            if reason is None and time.monotonic() >= expires:
+                stop(signal.SIGTERM, None, cause="timeout")
+            if deadline is not None and time.monotonic() >= deadline and not killed:
+                send_group(signal.SIGKILL)
+            try:
+                stdout, _stderr = child.communicate(timeout=0.1)
+                completed = True
+                break
+            except subprocess.TimeoutExpired:
+                continue
+        if reason is not None:
+            # A direct child can exit before its compiler/build subprocesses.
+            # Stop remaining members even when they closed the capture pipes.
+            if not killed:
+                send_group(signal.SIGKILL)
+            if reason == "timeout":
+                raise CompanionError(
+                    "runtime_command_timeout",
+                    "Runtime operation exceeded its time limit; subprocess output was suppressed.",
+                    3,
+                )
+            raise CompanionError(
+                "runtime_command_interrupted",
+                "Runtime operation was interrupted; subprocess output was suppressed.",
+                130,
+            )
+        if child.returncode != 0:
+            send_group(signal.SIGKILL)
+            raise subprocess.CalledProcessError(child.returncode, command)
+        return stdout.strip()
+    except KeyboardInterrupt:
+        # Also handle an injected interrupt or one raised by subprocess code;
+        # ordinary terminal SIGINT uses the bounded handler above.
+        raise CompanionError(
+            "runtime_command_interrupted", "Runtime operation was interrupted; subprocess output was suppressed.", 130
+        ) from None
     except (OSError, subprocess.SubprocessError):
         raise CompanionError(
             "runtime_command_failed",
             "Pinned runtime operation failed; inspect local tools and network, then retry. Subprocess output was suppressed.",
             3,
         ) from None
+    finally:
+        if child is not None:
+            if not completed and not killed:
+                send_group(signal.SIGKILL)
+            while True:
+                try:
+                    child.wait(timeout=0.25)
+                    break
+                except (subprocess.TimeoutExpired, KeyboardInterrupt):
+                    if not killed:
+                        send_group(signal.SIGKILL)
+            for stream in (child.stdout, child.stderr):
+                if stream is not None:
+                    stream.close()
+        for kind, original in previous.items():
+            signal.signal(kind, original)
 
 
 def verify_runtime(path: Path, *, require_installed=True):
@@ -112,6 +210,7 @@ def _ensure_runtime_pip(path, version):
 
 
 def install_runtime(path: Path, python: str, *, dry_run=False):
+    """Install/repair under the caller's exclusive runtime target admission lock."""
     operating_system()
     path = safe_path(path)
     if dry_run:
@@ -572,8 +671,9 @@ def _environment_hint(user_config, installation_id):
 def relay_runtime_session(config, *, api, state_directory=None, allow_local_http=False, on_activity=None):
     """Yield the pinned command and ephemeral relay environment without changing user config.
 
-    The caller holds the managed session lock. ``allow_local_http`` is a fixture
-    switch, never inferred from the production config or environment.
+    The caller holds the home session lock and shared runtime target admission.
+    ``allow_local_http`` is a fixture switch, never inferred from the production
+    config or environment.
     """
     upstream = safe_path(Path(config["upstream"]))
     command = verify_runtime(upstream)
@@ -584,7 +684,9 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
     environment = {
         key: value
         for key, value in os.environ.items()
-        if not key.upper().startswith(("OPENROUTER", "OPENAI_", "ANTHROPIC_", "LANGFUSE_", "HERMES_LANGFUSE_", "OTEL_"))
+        if not key.upper()
+        .removeprefix("_HERMES_FORCE_")
+        .startswith(("OPENROUTER", "OPENAI_", "ANTHROPIC_", "LANGFUSE_", "HERMES_LANGFUSE_", "OTEL_"))
         and key.upper().removeprefix("_HERMES_FORCE_")
         not in (
             "HERMES_PROFILE",

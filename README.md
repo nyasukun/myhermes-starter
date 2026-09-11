@@ -20,7 +20,7 @@ Hermes Agentを本人の複数環境で利用するための公開コンパニ�
 
 ## ローカル開発
 
-Node.js 24以上、Python 3.11–3.13、Gitを使います。コンパニオン自体はPython 3.14でも利用可能ですが、採用Hermes本体はPython 3.14をサポートしていません。
+Node.js 24以上、Python 3.11–3.13、Gitを使います。コンパニオンの実行を確認したPythonは3.11–3.13です。3.14は未検証で、採用Hermes本体も3.14をサポートしていません。
 
 ```sh
 python3.13 -m venv .venv

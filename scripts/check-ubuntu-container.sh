@@ -60,7 +60,10 @@ docker exec --user 10001:10001 --workdir /tmp/myhermes-public "$MYHERMES_CHECK_C
 # larger. It never authorizes a real provider call or copies an API key.
 if [ "${MYHERMES_CHECK_UPSTREAM:-0}" = '1' ]; then
   docker exec --user 10001:10001 --workdir /tmp/myhermes-public "$MYHERMES_CHECK_CONTAINER" sh -ec '
-    /tmp/myhermes-venv/bin/python -c '\''from pathlib import Path; from myhermes.runtime import install_runtime; import json; print(json.dumps(install_runtime(Path("/home/myhermes-test/hermes-agent"), "python3")))'\''
+    /tmp/myhermes-venv/bin/myhermes --state-dir /home/myhermes-test/myhermes-install-state setup \
+      --server https://example.invalid --hermes-home /home/myhermes-test/myhermes-install-home \
+      --upstream /home/myhermes-test/hermes-agent --label "Synthetic Ubuntu installation check"
+    /tmp/myhermes-venv/bin/myhermes --state-dir /home/myhermes-test/myhermes-install-state install-runtime --python python3
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_relay.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_environment.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_auxiliary.py -v

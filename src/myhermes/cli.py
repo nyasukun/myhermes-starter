@@ -50,6 +50,7 @@ from .runtime import (
     upgrade_runtime,
     verify_runtime,
 )
+from .runtime_lock import runtime_target_lock
 from .state import State
 from .session_sync import finish_managed_session
 from .skill_cli import boundary_sync, execute_skill_command, register_skill_commands
@@ -404,6 +405,8 @@ def _execute(args, on_activity=None):
                 },
             }
         stack.enter_context(file_lock(home / ".myhermes-session.lock"))
+        if args.command in ("install-runtime", "upgrade", "start") and not args.dry_run:
+            stack.enter_context(runtime_target_lock(Path(config["upstream"]), writer=args.command != "start"))
         if args.command in ("install-runtime", "upgrade"):
             if args.command == "upgrade":
                 return upgrade_runtime(state, home, Path(config["upstream"]), args.python, dry_run=args.dry_run)

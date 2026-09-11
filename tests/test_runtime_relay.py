@@ -50,8 +50,15 @@ class RuntimeRelayAcceptance(unittest.TestCase):
             "OPENROUTER_API_KEY": "synthetic-company-key",
             "openrouter_api_key": "synthetic-lowercase-key",
             "OpenRouter_Api_Key": "synthetic-mixed-case-key",
+            "_HERMES_FORCE_OPENROUTER_API_KEY": "synthetic-forced-provider-key",
+            "_hermes_force_openrouter_api_key": "synthetic-forced-lowercase-provider-key",
             "OPENAI_BASE_URL": "https://outside.example.invalid",
+            "_HERMES_FORCE_OPENAI_BASE_URL": "https://forced.example.invalid",
             "ANTHROPIC_API_KEY": "synthetic-other-key",
+            "_HERMES_FORCE_ANTHROPIC_API_KEY": "synthetic-forced-other-key",
+            "_HERMES_FORCE_LANGFUSE_SECRET_KEY": "synthetic-forced-tracing-key",
+            "_HERMES_FORCE_HERMES_LANGFUSE_PUBLIC_KEY": "synthetic-forced-tracing-id",
+            "_HERMES_FORCE_OTEL_EXPORTER_OTLP_HEADERS": "synthetic-forced-otel-header",
             "HERMES_IGNORE_USER_CONFIG": "1",
             "HERMES_PROFILE": "unwanted-profile",
             "AUXILIARY_MYHERMES_API_KEY": "synthetic-stale-token",
@@ -70,7 +77,9 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 self.assertNotEqual(environment["AUXILIARY_MYHERMES_API_KEY"], injected["AUXILIARY_MYHERMES_API_KEY"])
                 for key in injected:
                     if key != "AUXILIARY_MYHERMES_API_KEY":
-                        self.assertNotIn(key, environment)
+                        self.assertFalse(
+                            key in environment, "Blocked inherited variable reached the managed child: " + key
+                        )
                 overlay = Path(environment["HERMES_MANAGED_DIR"])
                 contents = (overlay / "config.yaml").read_text()
                 self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], contents)
