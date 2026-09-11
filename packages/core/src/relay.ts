@@ -3,6 +3,7 @@ import {boundedString, canonicalJSON, ContractError, exact, record, UUID} from '
 
 export const RELAY_URL = 'https://openrouter.ai/api/v1/chat/completions';
 export const RELAY_MAX_REQUEST_BYTES = 262_144;
+export const RELAY_DEFAULT_MAX_CONCURRENT_REQUESTS = 8;
 export type RelayModelPolicy = {
   model: string; provider: string; response_models: readonly string[]; response_providers: readonly string[];
   context_tokens: number; prompt_nano_per_token: number; completion_nano_per_token: number;
@@ -10,7 +11,7 @@ export type RelayModelPolicy = {
   output_parameter?: 'max_tokens'|'max_completion_tokens';
   generation_model?: string;
 };
-export type RelayPolicy = {version: string; daily_budget_nano: number; timeout_ms: number; aliases: Record<string, RelayModelPolicy>};
+export type RelayPolicy = {version: string; daily_budget_nano: number; timeout_ms: number; aliases: Record<string, RelayModelPolicy>; max_concurrent_requests?: number};
 export type RelayRequest = {alias: string; model_policy: RelayModelPolicy; stream: boolean; upstream: Record<string, unknown>; reservation_nano: number};
 export type RelayUsage = {prompt_tokens: number; completion_tokens: number; total_tokens: number; cost_nano: number};
 export type RelayObservation = {
@@ -21,6 +22,9 @@ export type RelayObservation = {
 export function relayInteger(value: unknown, min: number, max: number): number {
   if (!Number.isSafeInteger(value) || Number(value) < min || Number(value) > max) throw new ContractError('relay_invalid_integer');
   return Number(value);
+}
+export function relayConcurrencyLimit(value?: unknown): number {
+  return value===undefined?RELAY_DEFAULT_MAX_CONCURRENT_REQUESTS:relayInteger(value,1,128);
 }
 function finite(value: unknown, min: number, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new ContractError('relay_invalid_number');
@@ -63,6 +67,8 @@ function messages(value: unknown): unknown[] {
   });
 }
 export function validateRelayPolicy(policy: RelayPolicy): void {
+  exact(policy,['version','daily_budget_nano','timeout_ms','aliases','max_concurrent_requests'],['version','daily_budget_nano','timeout_ms','aliases']);
+  relayConcurrencyLimit(policy.max_concurrent_requests);
   boundedString(policy.version,64);relayInteger(policy.daily_budget_nano,1,1_000_000_000_000);relayInteger(policy.timeout_ms,100,300000);
   if(Object.keys(policy.aliases).length<1||Object.keys(policy.aliases).length>16)throw new ContractError('relay_invalid_policy');
   for(const [alias,p] of Object.entries(policy.aliases)){

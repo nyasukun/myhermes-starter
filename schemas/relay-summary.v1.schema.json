@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nyasukun/myhermes-starter/schemas/relay-summary.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "day",
+    "admission_day",
+    "history_complete_since",
+    "timezone",
+    "daily_budget_nano",
+    "requests",
+    "known_cost_nano",
+    "unknown_requests",
+    "outstanding_reservation_nano",
+    "available_nano",
+    "frozen",
+    "active_requests",
+    "max_concurrent_requests"
+  ],
+  "properties": {
+    "day": {
+      "type": "string",
+      "format": "date"
+    },
+    "admission_day": {
+      "type": "string",
+      "format": "date"
+    },
+    "history_complete_since": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "timezone": {
+      "const": "Asia/Tokyo"
+    },
+    "daily_budget_nano": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000000000
+    },
+    "requests": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "known_cost_nano": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unknown_requests": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "outstanding_reservation_nano": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "available_nano": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "frozen": {
+      "type": "boolean"
+    },
+    "active_requests": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "max_concurrent_requests": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128
+    }
+  },
+  "$comment": "Daily request and known-cost totals use day; active_requests and outstanding_reservation_nano span every retained day and owner in this company ledger. max_concurrent_requests is the current policy (default 8), not a historical value. Registered execution rows remain active even with known accounting and do not expire. history_complete_since marks incomplete retained history."
+}

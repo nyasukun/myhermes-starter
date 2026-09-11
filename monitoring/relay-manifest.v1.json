@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "source": "server_observed",
   "body_storage": false,
   "persisted_fields": [
@@ -58,9 +58,31 @@
     "client_values_allowed": false,
     "manual_zero_or_unfreeze": false
   },
+  "concurrency": {
+    "policy_field": "max_concurrent_requests",
+    "default": 8,
+    "minimum": 1,
+    "maximum": 128,
+    "scope": "all owners, installations, models and days in the company ledger",
+    "active_state": "registered",
+    "admission": "count and insert in one transaction after retained duplicate/reuse lookup",
+    "release_states": [
+      "completed",
+      "failed",
+      "cancelled",
+      "timeout"
+    ],
+    "missing_finish": "indefinite; restart, checkpoint, reconciliation and retention do not release a slot",
+    "summary_fields": [
+      "active_requests",
+      "max_concurrent_requests"
+    ],
+    "storage": "derived from execution state; no new request content or stored counter"
+  },
   "retention": {
     "known_ms": 7776000000,
-    "known_clock": "last settlement or outcome update; additionally after embedded ID admission expires",
+    "known_clock": "terminal execution only: last settlement or outcome update; additionally after embedded ID admission expires",
+    "registered": "indefinite even when accounting is known; no slot release by retention",
     "unknown": "indefinite; reservation and frozen state are never cleared by retention",
     "max_records": 100000,
     "batch_size": 100,

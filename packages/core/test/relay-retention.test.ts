@@ -57,9 +57,9 @@ test('late accounting and execution outcome update renew known retention; duplic
   assert.equal(f.ledger.purge(start+200*day).deleted,0);
   const usage={generation_id:'gen-fixture',returned_model:'fixture/model',returned_provider:'fixture',usage:observation().usage!};
   assert.equal(f.ledger.reconcile(r.server_request_id,usage,start+200*day).kind,'settled');
-  assert.equal(f.ledger.retentionNext(start+200*day),start+290*day);
+  assert.equal(f.ledger.retentionNext(start+200*day),null);
   assert.equal(f.ledger.reconcile(r.server_request_id,usage,start+201*day).kind,'duplicate');
-  assert.equal(f.ledger.retentionNext(start+201*day),start+290*day);
+  assert.equal(f.ledger.retentionNext(start+201*day),null);
   assert(f.ledger.finish(r.server_request_id,observation(),start+202*day));
   assert.equal(f.ledger.retentionNext(start+202*day),start+292*day);
   assert(f.ledger.finish(r.server_request_id,observation(),start+203*day));
