@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -57,6 +58,15 @@ class RuntimeInstallAcceptance(unittest.TestCase):
                     self.after_checkout()
                 return result
             if "-c" in command:
+                if str(command[0]).endswith("/.venv/bin/python"):
+                    return json.dumps(
+                        {
+                            "version": self.python_version,
+                            "prefix": str(Path(command[0]).parent.parent),
+                            "base_prefix": "/synthetic/base",
+                            "pip": True,
+                        }
+                    )
                 return self.python_version
             if "venv" in command:
                 target = Path(command[-1])
@@ -168,6 +178,101 @@ class RuntimeInstallAcceptance(unittest.TestCase):
         self.assertEqual(set(value["files"]), {"SOUL.md", "memories/MEMORY.md", "memories/USER.md"})
         self.assertNotIn("SYNTHETIC_SECRET", json.dumps(value))
         self.assertEqual(state.items("pending"), [queued])
+
+
+@unittest.skipUnless(
+    (3, 11) <= sys.version_info[:2] <= (3, 13), "Real venv repair requires upstream-supported Python 3.11–3.13"
+)
+class RuntimePartialVenvAcceptance(unittest.TestCase):
+    """Real venv/ensurepip; only the subsequent dependency installation is a fixture."""
+
+    def setUp(self):
+        self.stack = ExitStack()
+        self.addCleanup(self.stack.close)
+        self.root = Path(
+            self.stack.enter_context(tempfile.TemporaryDirectory(prefix="myhermes-partial-venv-"))
+        ).resolve()
+        self.checkout = self.root / "runtime"
+        self.checkout.mkdir()
+        self.stack.enter_context(
+            patch.dict(os.environ, {"PATH": os.defpath, "HOME": str(self.root), "GIT_CONFIG_NOSYSTEM": "1"}, clear=True)
+        )
+        self.actual_checked = runtime.checked
+        for command in (
+            ["git", "init", "-q", str(self.checkout)],
+            ["git", "-C", str(self.checkout), "config", "user.name", "Synthetic fixture"],
+            ["git", "-C", str(self.checkout), "config", "user.email", "fixture@example.invalid"],
+            ["git", "-C", str(self.checkout), "config", "commit.gpgsign", "false"],
+        ):
+            self.actual_checked(command)
+        (self.checkout / "README.md").write_text("Synthetic upstream fixture\n")
+        self.actual_checked(["git", "add", "README.md"], cwd=self.checkout)
+        self.actual_checked(["git", "commit", "-qm", "fixture"], cwd=self.checkout)
+        commit = self.actual_checked(["git", "rev-parse", "HEAD"], cwd=self.checkout)
+        self.stack.enter_context(patch.object(runtime, "UPSTREAM_COMMIT", commit))
+        self.python = self.checkout / ".venv/bin/python"
+        self.calls = []
+
+        def command(args, *, cwd=None):
+            self.calls.append(args)
+            if "pip" in args and "install" in args:
+                # A missing pip must still fail here; never replace its actual
+                # bootstrap with a mock or perform an external dependency install.
+                self.actual_checked([str(self.python), "-I", "-m", "pip", "--version"])
+                (self.checkout / ".venv/bin/hermes").write_text("Synthetic console entrypoint\n")
+                return ""
+            return self.actual_checked(args, cwd=cwd)
+
+        self.stack.enter_context(patch.object(runtime, "checked", side_effect=command))
+
+    def without_pip(self):
+        self.actual_checked([sys.executable, "-m", "venv", "--without-pip", str(self.checkout / ".venv")])
+
+    def test_partial_venv_recovers_pip_without_recreation_or_owner_file_changes(self):
+        self.without_pip()
+        config = self.checkout / ".venv/pyvenv.cfg"
+        original_config = config.read_bytes()
+        retained = self.checkout / ".venv/owner-note.txt"
+        retained.write_bytes(b"Synthetic retained owner file")
+        self.assertEqual(
+            self.actual_checked(
+                [str(self.python), "-I", "-c", "import importlib.util; print(importlib.util.find_spec('pip') is None)"]
+            ),
+            "True",
+        )
+        for _ in range(2):
+            self.assertEqual(runtime.install_runtime(self.checkout, sys.executable)["status"], "installed")
+        self.assertEqual(sum("ensurepip" in call for call in self.calls), 1)
+        self.assertFalse(any("venv" in call for call in self.calls))
+        self.assertEqual(config.read_bytes(), original_config)
+        self.assertEqual(retained.read_bytes(), b"Synthetic retained owner file")
+        self.assertEqual(
+            self.actual_checked(["git", "status", "--porcelain", "--untracked-files=no"], cwd=self.checkout), ""
+        )
+
+    def test_different_selected_python_version_rejects_before_pip_bootstrap(self):
+        self.without_pip()
+        previous = runtime.checked
+        version = "3.12" if sys.version_info.minor != 12 else "3.11"
+
+        def different(args, *, cwd=None):
+            if args[0] == sys.executable and "-c" in args:
+                return version
+            return previous(args, cwd=cwd)
+
+        with patch.object(runtime, "checked", side_effect=different), self.assertRaises(CompanionError) as raised:
+            runtime.install_runtime(self.checkout, sys.executable)
+        self.assertEqual(raised.exception.code, "runtime_venv_mismatch")
+        self.assertFalse(any("ensurepip" in call or "pip" in call for call in self.calls))
+
+    def test_interpreter_outside_target_venv_rejects_without_touching_base_python(self):
+        self.python.parent.mkdir(parents=True)
+        self.python.symlink_to(sys.executable)
+        with self.assertRaises(CompanionError) as raised:
+            runtime.install_runtime(self.checkout, sys.executable)
+        self.assertEqual(raised.exception.code, "runtime_venv_mismatch")
+        self.assertFalse(any("ensurepip" in call or "pip" in call for call in self.calls))
+        self.assertFalse((self.checkout / ".venv/bin/hermes").exists())
 
 
 if __name__ == "__main__":

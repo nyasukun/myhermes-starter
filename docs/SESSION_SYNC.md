@@ -8,7 +8,7 @@ Online boundaries drain pending updates and descendant local edits in bounded pa
 
 `start --offline` skips sync network calls, uses the cached skill boundary rules and captures personality after the child returns. Successful durable queueing is a successful offline completion. Repeated offline sessions preserve the original pending payload and update the separate latest-session checkpoint. The local LLM bridge still enforces company relay authentication; offline mode does not enable an unapproved direct provider. Cached authorization/publication information cannot be claimed current.
 
-Both persona and skill finalizers are attempted even when one fails or the child returns nonzero. A handled keyboard interrupt also attempts finalization after the launcher returns. SIGKILL, machine failure and an uncooperative external writer cannot be promised a finalization callback; the next normal sync scans the allowlisted local files and retains existing durable state. Do not delete state to clear a post-session error.
+Both persona and skill finalizers are attempted even when one fails or the child returns nonzero. Handled keyboard interrupts, SIGTERM and SIGHUP also attempt finalization after the child has stopped and been reaped. The managed launcher forwards SIGTERM/SIGHUP only to its own child and escalates after a fixed grace period; [COMPANION.md](COMPANION.md) describes the signal and process boundaries. SIGKILL, machine failure and an uncooperative external writer cannot be promised a finalization callback; the next normal sync scans the allowlisted local files and retains existing durable state. Do not delete state to clear a post-session error.
 
 ## Structured result and exits
 

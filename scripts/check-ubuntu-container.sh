@@ -64,6 +64,7 @@ if [ "${MYHERMES_CHECK_UPSTREAM:-0}" = '1' ]; then
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_relay.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_environment.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_auxiliary.py -v
+    MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_runtime_signals.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_skill_frontmatter.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_hermes_oneshot.py -v
     MYHERMES_TEST_UPSTREAM=/home/myhermes-test/hermes-agent /tmp/myhermes-venv/bin/python -m unittest discover -s tests -p test_hermes_memory_sync.py -v

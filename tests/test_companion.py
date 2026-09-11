@@ -800,7 +800,7 @@ class AuthenticationAndCLI(unittest.TestCase):
 
         terminal = Terminal()
         key = ec.generate_private_key(ec.SECP256R1())
-        code = "TEST-SECRET-CODE"
+        code = "0123456789ABCDEF"
         enrollment_id, installation_id, person_id = (str(uuid.uuid4()) for _ in range(3))
         with tempfile.TemporaryDirectory(dir="/private/tmp" if Path("/private/tmp").exists() else "/tmp") as temporary:
             config = {

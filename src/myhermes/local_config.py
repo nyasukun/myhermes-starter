@@ -4,6 +4,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import stat
 import urllib.parse
 import uuid
@@ -91,13 +92,26 @@ def enrollment_metadata(value, server):
         (location.scheme, location.netloc) != (origin.scheme, origin.netloc)
         or location.path != "/"
         or location.fragment
-        or urllib.parse.parse_qs(location.query) != {"enrollment_id": [value["enrollment_id"]]}
+        or urllib.parse.parse_qsl(location.query, keep_blank_values=True) != [("enrollment_id", value["enrollment_id"])]
     ):
         raise ValueError()
     expiry = value["expires_at"]
-    if type(expiry) not in (int, float) or not math.isfinite(expiry) or not 0 <= expiry <= 253_402_300_799:
+    if type(expiry) not in (int, float) or not 0 <= expiry <= 253_402_300_799 or not math.isfinite(expiry):
         raise ValueError()
     return dict(value)
+
+
+def enrollment_code(value):
+    if not isinstance(value, str) or re.fullmatch(r"[0-9A-F]{16}", value) is None:
+        raise ValueError()
+    return value
+
+
+def enrollment_challenge(value, server):
+    if not isinstance(value, dict) or set(value) != {"enrollment_id", "verification_uri", "expires_at", "user_code"}:
+        raise ValueError()
+    metadata = enrollment_metadata({key: item for key, item in value.items() if key != "user_code"}, server)
+    return metadata, enrollment_code(value["user_code"])
 
 
 def config_read(directory):

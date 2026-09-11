@@ -220,7 +220,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
             with (
                 patch("myhermes.runtime.open", return_value=terminal, create=True),
                 patch("myhermes.runtime.RelayBridge", side_effect=bridge),
-                patch("myhermes.runtime.subprocess.run", side_effect=KeyboardInterrupt),
+                patch("myhermes.runtime._run_managed_child", side_effect=KeyboardInterrupt),
             ):
                 with self.assertRaises(KeyboardInterrupt):
                     start_runtime(

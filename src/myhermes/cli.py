@@ -20,7 +20,8 @@ from .local_config import (
     bound_config_read,
     canonical_identifier,
     config_read as config_read,
-    enrollment_metadata,
+    enrollment_challenge,
+    enrollment_code,
     marker_read,
 )
 from .identity_recovery import identity_command, re_enroll
@@ -183,26 +184,19 @@ def enroll(config, directory, args):
                 "public_jwk": public_jwk(key),
             },
         )
-        if not all(
-            isinstance(enrollment.get(k), str) for k in ("enrollment_id", "user_code", "verification_uri")
-        ) or not isinstance(enrollment.get("expires_at"), (int, float)):
-            raise CompanionError("schema_rejected", "Invalid enrollment response.")
-        uuid.UUID(enrollment["enrollment_id"])
+        try:
+            metadata, code = enrollment_challenge(enrollment, config["server"])
+        except (KeyError, TypeError, ValueError):
+            raise CompanionError("schema_rejected", "Invalid enrollment response.") from None
         # The one-time registration code is also kept in native secure storage.
         try:
-            store.backend.set_password(store.SERVICE, config["key_id"] + ":enrollment-code", enrollment["user_code"])
+            store.backend.set_password(store.SERVICE, config["key_id"] + ":enrollment-code", code)
         except Exception:
             raise CompanionError(
                 "secure_store_unavailable", "Unable to save the enrollment code to native secure storage.", 3
             ) from None
-        try:
-            config["enrollment"] = enrollment_metadata(
-                {k: enrollment[k] for k in ("enrollment_id", "verification_uri", "expires_at")}, config["server"]
-            )
-        except (KeyError, TypeError, ValueError):
-            raise CompanionError("schema_rejected", "Invalid enrollment metadata response.") from None
+        config["enrollment"] = metadata
         atomic_json(directory / "config.json", config)
-        code = enrollment["user_code"]
         enrollment = config["enrollment"]
     else:
         try:
@@ -215,6 +209,12 @@ def enroll(config, directory, args):
                 "Enrollment code is unavailable in the secure store; restart enrollment from a new state directory.",
                 3,
             )
+        try:
+            code = enrollment_code(code)
+        except ValueError:
+            raise CompanionError(
+                "schema_rejected", "Invalid stored enrollment code; pending registration was preserved."
+            ) from None
     expected_origin = urllib.parse.urlsplit(config["server"])
     verification = urllib.parse.urlsplit(enrollment["verification_uri"])
     if (verification.scheme, verification.netloc) != (expected_origin.scheme, expected_origin.netloc):

@@ -44,7 +44,7 @@ class EnrollmentIdentityValidation(unittest.TestCase):
                     201,
                     {
                         "enrollment_id": pending_id,
-                        "user_code": "synthetic-only",
+                        "user_code": "1234567890ABCDEF",
                         "verification_uri": "https://fixture.invalid/?enrollment_id=" + pending_id,
                         "expires_at": time.time() + 600,
                     },

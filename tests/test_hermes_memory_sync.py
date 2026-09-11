@@ -152,7 +152,7 @@ class HermesMemorySyncAcceptance(unittest.TestCase):
                     return result
                 return run(command, *args, **kwargs)
 
-            stack.enter_context(patch("myhermes.runtime.subprocess.run", side_effect=actual_oneshot))
+            stack.enter_context(patch("myhermes.runtime._run_managed_child", side_effect=actual_oneshot))
             output = io.StringIO()
             with redirect_stdout(output):
                 code = cli.main([*argv, "start"])

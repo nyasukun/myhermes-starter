@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nyasukun/myhermes-starter/schemas/enrollment-response.v1.schema.json",
+  "title": "MyHermes environment enrollment response v1",
+  "$comment": "The client additionally verifies the URI origin against its configured server and requires the sole query pair enrollment_id to equal the response enrollment_id. This response contains a one-time authorization code: never log it or place it in browser/subprocess arguments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enrollment_id", "user_code", "verification_uri", "expires_at"],
+  "properties": {
+    "enrollment_id": {"type": "string", "format": "uuid", "minLength": 36, "maxLength": 36},
+    "user_code": {"type": "string", "pattern": "^[0-9A-F]{16}$", "minLength": 16, "maxLength": 16},
+    "verification_uri": {"type": "string", "format": "uri", "minLength": 1, "maxLength": 2048},
+    "expires_at": {"type": "number", "minimum": 0, "maximum": 253402300799}
+  }
+}

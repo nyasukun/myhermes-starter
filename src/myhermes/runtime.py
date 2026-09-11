@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import signal
 import stat
 import subprocess
 import sys
@@ -76,6 +77,40 @@ def verify_runtime(path: Path, *, require_installed=True):
     return command
 
 
+def _ensure_runtime_pip(path, version):
+    environment = safe_path(path / ".venv")
+    interpreter = environment / "bin/python"
+    probe = (
+        "import importlib.util,json,sys; "
+        "print(json.dumps({'version':f'{sys.version_info.major}.{sys.version_info.minor}',"
+        "'prefix':sys.prefix,'base_prefix':sys.base_prefix,'pip':importlib.util.find_spec('pip') is not None}))"
+    )
+    try:
+        info = json.loads(checked([str(interpreter), "-I", "-c", probe]))
+        valid = (
+            isinstance(info, dict)
+            and info.get("version") == version
+            and isinstance(info.get("prefix"), str)
+            and isinstance(info.get("base_prefix"), str)
+            and info["prefix"] != info["base_prefix"]
+            and Path(info["prefix"]).resolve() == environment
+            and type(info.get("pip")) is bool
+        )
+    except (ValueError, TypeError, OSError):
+        valid = False
+    if not valid:
+        raise CompanionError(
+            "runtime_venv_mismatch",
+            "The existing runtime interpreter must use this checkout's .venv and the selected Python version. "
+            "Choose the matching supported --python or inspect the incomplete environment; its files were preserved.",
+            3,
+        )
+    if not info["pip"]:
+        # CPython's bundled bootstrap needs no network. Never install into a
+        # base interpreter or clear an existing owner environment to repair it.
+        checked([str(interpreter), "-I", "-m", "ensurepip", "--default-pip"], cwd=path)
+
+
 def install_runtime(path: Path, python: str, *, dry_run=False):
     operating_system()
     path = safe_path(path)
@@ -120,6 +155,7 @@ def install_runtime(path: Path, python: str, *, dry_run=False):
     verify_runtime(path, require_installed=False)
     if not (path / ".venv/bin/python").exists():
         checked([python, "-m", "venv", str(path / ".venv")])
+    _ensure_runtime_pip(path, version)
     checked([str(path / ".venv/bin/python"), "-m", "pip", "install", "-e", ".[cli]"], cwd=path)
     verify_runtime(path)
     return {"status": "installed", "version": UPSTREAM_VERSION, "commit": UPSTREAM_COMMIT}
@@ -594,6 +630,76 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
                     environment.pop("HERMES_ENVIRONMENT_HINT", None)
 
 
+_TERMINATION_GRACE_SECONDS = 10
+
+
+def _run_managed_child(command, *, env, stdin, stdout, stderr):
+    child, requested, deadline = None, None, None
+    previous = {}
+
+    def forward(signum, _frame):
+        nonlocal requested, deadline
+        if requested is None:
+            requested = signum
+            deadline = time.monotonic() + _TERMINATION_GRACE_SECONDS
+        if child is not None:
+            try:
+                child.send_signal(signum)
+            except ProcessLookupError:
+                pass
+
+    try:
+        for kind in (signal.SIGTERM, signal.SIGHUP):
+            original = signal.getsignal(kind)
+            try:
+                signal.signal(kind, forward)
+            except ValueError:
+                raise CompanionError(
+                    "runtime_main_thread_required", "Managed startup must run on the CLI's main thread.", 3
+                ) from None
+            previous[kind] = original
+        child = subprocess.Popen(command, env=env, stdin=stdin, stdout=stdout, stderr=stderr)
+        if requested is not None:
+            # A signal during Popen construction is remembered until its child
+            # handle exists. Never wait or extend the deadline in the handler.
+            forward(requested, None)
+        while True:
+            try:
+                code = child.wait(timeout=0.1)
+                break
+            except subprocess.TimeoutExpired:
+                if deadline is not None and time.monotonic() >= deadline:
+                    try:
+                        child.kill()
+                    except ProcessLookupError:
+                        pass
+        if requested is not None:
+            # Use the existing cancelled-session path only after the child has
+            # stopped; both persona and skill finalizers still run under lock.
+            raise KeyboardInterrupt
+        return subprocess.CompletedProcess(command, code)
+    finally:
+        if child is not None:
+            if child.poll() is None:
+                try:
+                    child.kill()
+                except ProcessLookupError:
+                    pass
+            while True:
+                try:
+                    child.wait(timeout=0.25)
+                    break
+                except (subprocess.TimeoutExpired, KeyboardInterrupt):
+                    # Retain handlers/outer session lock until the OS confirms
+                    # reaping, even if another interrupt arrives during cleanup.
+                    try:
+                        child.kill()
+                    except ProcessLookupError:
+                        pass
+        for kind, original in previous.items():
+            signal.signal(kind, original)
+
+
 def start_runtime(config, *, api=None, state_directory=None, on_activity=None):
     # One environment home; never account-kind profiles. Runtime conversation goes
     # directly to the owner's terminal, not the structured companion stdout.
@@ -617,8 +723,8 @@ def start_runtime(config, *, api=None, state_directory=None, on_activity=None):
             began, outcome = time.monotonic(), "failed"
             record("runtime_start", {"outcome": "ok"})
             try:
-                result = subprocess.run(
-                    [str(command)], env=environment, stdin=terminal, stdout=terminal, stderr=terminal, check=False
+                result = _run_managed_child(
+                    [str(command)], env=environment, stdin=terminal, stdout=terminal, stderr=terminal
                 )
                 outcome = "ok" if result.returncode == 0 else "failed"
             except KeyboardInterrupt:
