@@ -106,7 +106,7 @@ class HermesSkillDiscoveryAcceptance(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, "Official skill-enabled turn failed; raw output suppressed")
                     self.assertIn("SKILLS_READY.", result.stdout)
                     self.assertNotIn(
-                        environment["MYHERMES_SESSION_TOKEN"],
+                        environment["AUXILIARY_MYHERMES_API_KEY"],
                         result.stdout + result.stderr + discovery.stdout + discovery.stderr,
                     )
                 self.assertEqual(peer["errors"], [])

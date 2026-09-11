@@ -42,7 +42,7 @@ def post_tool_call(tool_name, duration_ms=0, status=None):
     connection = None
     try:
         endpoint = urllib.parse.urlsplit(os.environ.get("MYHERMES_MONITORING_URL", ""))
-        token = os.environ.get("MYHERMES_SESSION_TOKEN", "")
+        token = os.environ.get("AUXILIARY_MYHERMES_API_KEY", "")
         if (
             endpoint.scheme != "http"
             or endpoint.hostname != "127.0.0.1"

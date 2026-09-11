@@ -3,6 +3,7 @@
 from contextlib import ExitStack, contextmanager
 import fcntl
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,7 @@ import uuid
 from .errors import CompanionError
 from .files import atomic_json, file_lock, private_dir, safe_path
 from .local_config import _identifier, _read, canonical_identifier, config_read, marker_read
+from .terminal_input import read_terminal_line
 
 JOURNAL = "identity-recovery.json"
 DATABASES = ("connections.sqlite3", "telemetry.sqlite3")
@@ -111,17 +113,19 @@ def identity_command(directory, *, recovery=False, dry_run=False):
 
 def _confirm(cancel=False):
     try:
-        with open("/dev/tty", "r+", encoding="utf-8", buffering=1) as terminal:
+        with (
+            open("/dev/tty", "r+b", buffering=0) as device,
+            io.TextIOWrapper(device, encoding="utf-8", line_buffering=True, write_through=True) as terminal,
+        ):
             if not terminal.isatty():
                 raise OSError()
-            termios.tcgetattr(terminal.fileno())
-            terminal.write(
+            answer = read_terminal_line(
+                terminal,
                 "Cancel this unpublished candidate and keep the original identity? Type yes: "
                 if cancel
-                else "Replace this installation key for the SAME owner, keeping personality and skills? Type yes: "
+                else "Replace this installation key for the SAME owner, keeping personality and skills? Type yes: ",
             )
-            terminal.flush()
-            if terminal.readline(32).strip() != "yes":
+            if answer != "yes":
                 raise CompanionError("identity_recovery_cancelled", "No recovery operation was performed.", 3)
     except (OSError, termios.error):
         raise CompanionError(

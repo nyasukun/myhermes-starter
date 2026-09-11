@@ -15,11 +15,11 @@ Build a wheel from the public source:
 .venv/bin/python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
 ```
 
-After installing that wheel and configuring a Hermes home with `myhermes setup`, run:
+After installing that wheel and configuring a Hermes home with `myhermes setup`, use the same verified executable and explicit state directory for every command. These examples continue the virtual environment and state directory from [USER_GUIDE.md](USER_GUIDE.md); substitute the paths selected during your setup when they differ. The CLI does not use `MYHERMES_STATE_DIR` as its default. Omitting `--state-dir` selects `~/.local/state/myhermes`, which may identify another installation.
 
 ```sh
-myhermes skills bootstrap --dry-run
-myhermes skills bootstrap
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" skills bootstrap --dry-run
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" skills bootstrap
 ```
 
 The command needs neither enrollment nor a live service. It creates `HERMES_HOME/skills/myhermes-skills/SKILL.md` and `HERMES_HOME/skills/myhermes-connections/SKILL.md` from `importlib.resources`, so it works without the repository. Managed online/offline start verifies the same assets under the session lock. These reserved builtin names differ from `mh-personal-ID` and `mh-company-ID`; no account profiles are introduced, and builtin instructions never enter a user's sync outbox.
@@ -27,7 +27,7 @@ The command needs neither enrollment nor a live service. It creates `HERMES_HOME
 Owner modifications, extra files, unmanaged name collisions, symlinks and unsafe files stop normal replacement. To restore the bundled version deliberately:
 
 ```sh
-myhermes skills bootstrap --restore
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" skills bootstrap --restore
 ```
 
 This moves the complete modified ordinary directory outside runtime discovery to `HERMES_HOME/.myhermes-builtin-backups/UUID/NAME/` before replacement. Reported backup IDs identify retained files. Symlinked paths remain refused. A persistent journal recovers interruption after the directory move or file replacement; it does not overwrite a newly modified third state. Backups are not automatically deleted in the MVP. Arbitrary external writers that ignore the managed lock remain unsupported.

@@ -114,7 +114,11 @@ class HermesMemorySyncAcceptance(unittest.TestCase):
 
             stack.enter_context(patch("myhermes.runtime.RelayBridge", side_effect=bridge))
             stack.enter_context(
-                patch("myhermes.runtime.open", side_effect=lambda *_: tempfile.TemporaryFile(mode="w+"), create=True)
+                patch(
+                    "myhermes.runtime.open",
+                    side_effect=lambda *_, **_kw: tempfile.TemporaryFile(mode="w+"),
+                    create=True,
+                )
             )
             run = subprocess.run
 
@@ -147,7 +151,7 @@ class HermesMemorySyncAcceptance(unittest.TestCase):
                         cwd=root,
                     )
                     result = run(command, *args, **kwargs)
-                    self.assertNotIn(kwargs["env"]["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+                    self.assertNotIn(kwargs["env"]["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
                     runtime_output.append(result)
                     return result
                 return run(command, *args, **kwargs)

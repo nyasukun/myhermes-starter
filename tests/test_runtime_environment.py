@@ -41,7 +41,7 @@ class RuntimeEnvironmentAcceptance(unittest.TestCase):
                 on_activity=lambda kind, attrs: events.append((kind, attrs)),
             ) as (_, environment):
                 hint = environment["HERMES_ENVIRONMENT_HINT"]
-                token = environment["MYHERMES_SESSION_TOKEN"]
+                token = environment["AUXILIARY_MYHERMES_API_KEY"]
                 self.assertTrue(hint.startswith(owner + "\n\n"))
                 self.assertNotIn("CONFIG_OWNER_HINT", hint)
                 self.assertIn("installation_id=" + f.company["installation"], hint)
@@ -114,7 +114,7 @@ class RuntimeEnvironmentAcceptance(unittest.TestCase):
                         " assert 'Host: ' not in remote and hint.strip() in remote\n"
                         " assert 'verify the actual terminal backend, OS and target paths' in remote\n"
                         " assert 'source installation_id=' in remote\n"
-                        "assert os.environ['MYHERMES_SESSION_TOKEN'] not in local+remote\n"
+                        "assert os.environ['AUXILIARY_MYHERMES_API_KEY'] not in local+remote\n"
                         "print('verified environment context')\n"
                     )
                     result = subprocess.run(
@@ -130,7 +130,7 @@ class RuntimeEnvironmentAcceptance(unittest.TestCase):
                     )
                     self.assertEqual(result.stdout.strip(), "verified environment context")
                     self.assertNotIn(environment["HERMES_ENVIRONMENT_HINT"], result.stdout + result.stderr)
-                    self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+                    self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
         self.assertEqual((f.home / "config.yaml").read_text(), original)
 
 

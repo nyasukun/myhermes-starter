@@ -77,7 +77,7 @@ class SessionSyncAcceptance(unittest.TestCase):
         self.stack.enter_context(patch("myhermes.runtime.RelayBridge", side_effect=bridge))
         # Only synthetic conversation uses this substitute owner terminal.
         self.stack.enter_context(
-            patch("myhermes.runtime.open", side_effect=lambda *_: tempfile.TemporaryFile(mode="w+"), create=True)
+            patch("myhermes.runtime.open", side_effect=lambda *_, **_kw: tempfile.TemporaryFile(mode="w+"), create=True)
         )
         self.write_child()
 
@@ -95,7 +95,7 @@ class SessionSyncAcceptance(unittest.TestCase):
             "home=pathlib.Path(os.environ['HERMES_HOME'])\n"
             "config=json.loads((pathlib.Path(os.environ['HERMES_MANAGED_DIR'])/'config.yaml').read_text())\n"
             "url=config['model']['base_url']+'/chat/completions'\n"
-            "request=urllib.request.Request(url,json.dumps({'model':'economy','messages':[{'role':'user','content':'synthetic'}]}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+os.environ['MYHERMES_SESSION_TOKEN']})\n"
+            "request=urllib.request.Request(url,json.dumps({'model':'economy','messages':[{'role':'user','content':'synthetic'}]}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+os.environ['AUXILIARY_MYHERMES_API_KEY']})\n"
             "with urllib.request.urlopen(request) as response: value=json.load(response)\n"
             "assert value['choices'][0]['message']['content']=='SYNTHETIC_SESSION_MEMORY'\n"
             "(home/'memories').mkdir(exist_ok=True)\n"

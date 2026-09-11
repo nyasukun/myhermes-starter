@@ -51,7 +51,7 @@ class HermesOneshotAcceptance(unittest.TestCase):
                         text=True,
                         timeout=90,
                     )
-                    self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+                    self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
                     self.assertEqual(
                         result.returncode, 0, "Actual Hermes fixture turn failed; raw output intentionally suppressed"
                     )

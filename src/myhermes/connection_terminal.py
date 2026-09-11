@@ -1,10 +1,12 @@
 """Owner-only terminal prompts. Never fall back to stdin or an echoing password read."""
 
+import io
 import json
 import termios
 
 from .errors import CompanionError
 from .github import validate_pat
+from .terminal_input import read_terminal_line
 
 
 def terminal_text(value):
@@ -15,7 +17,10 @@ class NativeConnectionTerminal:
     def __init__(self):
         self.stream = None
         try:
-            self.stream = open("/dev/tty", "r+", encoding="utf-8", buffering=1)
+            # BufferedRandom requires a seekable device. Wrap unbuffered FileIO
+            # directly so a real terminal supports both UTF-8 reads and writes.
+            self.stream = open("/dev/tty", "r+b", buffering=0)
+            self.stream = io.TextIOWrapper(self.stream, encoding="utf-8", line_buffering=True, write_through=True)
             if not self.stream.isatty():
                 raise OSError("Not a terminal")
             termios.tcgetattr(self.stream.fileno())
@@ -45,25 +50,14 @@ class NativeConnectionTerminal:
         self.stream.write("Requested permissions: " + ", ".join(template["auth"]["required_permissions"]) + "\n")
 
     def read_token(self):
-        fd = self.stream.fileno()
-        previous = termios.tcgetattr(fd)
-        attributes = list(previous)
-        attributes[3] &= ~(termios.ECHO | termios.ECHONL)
         try:
-            termios.tcsetattr(fd, termios.TCSAFLUSH, attributes)
-            self.stream.write("Fine-grained PAT (hidden): ")
-            self.stream.flush()
-            token = self.stream.readline(514)
+            token = read_terminal_line(self.stream, "Fine-grained PAT (hidden): ", hidden=True, limit=512)
         except (OSError, termios.error):
             raise CompanionError(
                 "terminal_required",
                 "Secure terminal input is unavailable; the token was not read through a fallback.",
                 3,
             ) from None
-        finally:
-            termios.tcsetattr(fd, termios.TCSAFLUSH, previous)
-            self.stream.write("\n")
-        token = token.rstrip("\r\n")
         validate_pat(token)
         return token
 
@@ -80,9 +74,7 @@ class NativeConnectionTerminal:
         self.stream.write(
             "Accepted scope: " + terminal_text(json.dumps(context, ensure_ascii=False, sort_keys=True)) + "\n"
         )
-        self.stream.write("Register this account for that scope? Type yes: ")
-        self.stream.flush()
-        accepted = self.stream.readline(32).strip() == "yes"
+        accepted = read_terminal_line(self.stream, "Register this account for that scope? Type yes: ") == "yes"
         if not accepted:
             raise CompanionError(
                 "authorization_cancelled",

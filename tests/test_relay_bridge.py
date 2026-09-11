@@ -605,7 +605,7 @@ class BridgeAcceptance(unittest.TestCase):
         with patch.dict(
             "os.environ",
             {
-                "MYHERMES_SESSION_TOKEN": self.bridge.session_token,
+                "AUXILIARY_MYHERMES_API_KEY": self.bridge.session_token,
                 "MYHERMES_MONITORING_URL": self.bridge.base_url + "/myhermes/tool-events",
             },
         ):

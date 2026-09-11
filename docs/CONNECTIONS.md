@@ -1,6 +1,6 @@
 # GitHub connections — M2 acceptance and implementation
 
-Status: implemented with 27 passing connector tests, including actual HTTP requests to a synthetic loopback GitHub fixture. Acceptance criteria were written before implementation. Live GitHub authorization and native OS credential prompts remain unverified by these tests. The versioned API/template source of truth is [M2 connection contract](M2_CONNECTION_CONTRACT.md).
+Status: implemented with connector tests, including actual HTTP requests to a synthetic loopback GitHub fixture. Acceptance criteria were written before implementation. Live GitHub authorization and the real credential store remain separate from synthetic terminal checks. The versioned API/template source of truth is [M2 connection contract](M2_CONNECTION_CONTRACT.md).
 
 ## Acceptance criteria
 
@@ -14,6 +14,8 @@ Status: implemented with 27 passing connector tests, including actual HTTP reque
 8. Onboarding metadata writes survive lost responses through persistent request IDs; retries cannot create duplicate logical connections or lose track of a saved native credential. A failed or interrupted flow is inspectable and resumable without printing tokens.
 9. Connection diagnostics and onboarding JSON contain metadata only. Content output is explicit for an owner-requested read; raw upstream errors and headers are never echoed. Real authorization/startup stays outside Codex-captured terminals and PTYs.
 10. Automated tests use synthetic credentials with a local HTTP fixture and the production request construction/parser/selection paths. Tests cover multiple simultaneous accounts, missing binding, identity mismatch, grant revocation, malicious templates/resources/redirects, denied access, rate limits, lost responses, redaction and cleanup. Real GitHub grants and native-keyring authorization remain separately reported and are not performed by automated fixtures.
+11. An isolated synthetic controlling-terminal test must open the actual `/dev/tty`, accept hidden input and Unicode notices, restore terminal settings after success, cancellation, invalid input and interruption, and never echo its synthetic token. This verifies terminal mechanics only; real authorization still belongs in the owner's uncaptured terminal.
+12. Secret input must temporarily require canonical line input even when the original terminal is noncanonical. Pasted extra lines must not approve the later notice. Confirmation accepts the complete line `yes` only; long or padded prefixes are rejected. SIGINT, SIGTERM and SIGHUP must restore original terminal attributes and signal handlers before interruption. A non-main-thread caller must fail before changing echo. Unhandleable SIGKILL and loss of the terminal device are outside this restoration guarantee.
 
 ## Verified GitHub authentication choice
 
@@ -90,6 +92,18 @@ Logical connection and per-environment binding revocation use the owner portal. 
 Tests create an ephemeral loopback HTTP server, build production fixed-host requests, and route them through an explicitly injected test opener. There is no production CLI or environment switch for alternate GitHub origins. Synthetic credentials remain only in an injected in-memory keyring. The tests verify five concurrent account classifications, independent environments, identity swaps, scoped grants, stale/revoked bindings, disabled templates, denied/rate-limited responses, token redaction, malicious templates and paths, cancelled registration, response loss/restart, durable cleanup and forgotten-token non-resurrection.
 
 The suite does not authorize real accounts, confirm GitHub organization approval, certify all fine-grained PAT limitations, or exercise native credential prompts on Ubuntu/macOS. Those checks require the owner's approved account and target OS. A separate Private M2 cross-language integration passed using the Python connector against the real local Worker and a synthetic GitHub HTTP server: template retrieval, connection creation, ready binding, second-environment needs-auth, wrong-account rejection, and reauthorization all exercised the production wire paths. This is not a real company deployment or live GitHub grant.
+
+Additional macOS controlling-terminal acceptance tests use only a synthetic PAT in a disposable child PTY. The previous `open("/dev/tty", "r+")` mode failed before displaying the prompt because its buffered read/write stream requires seeking. An unbuffered binary device with a UTF-8 text wrapper supports terminal output; bounded input reads use the descriptor directly. The old revision reproduces `terminal_required` on the same isolated PTY.
+
+Independent PTY probes then found that a noncanonical terminal could retain a pasted `yes` in the text wrapper's read-ahead buffer, and that a long line beginning with `yes` and spaces could pass a truncated confirmation check. SIGTERM and SIGHUP also left echo disabled. The common terminal reader now requires the main thread before changing terminal state, temporarily enables canonical input with carriage-return normalization, flushes queued input before and after the prompt, and reads one complete bounded line without text read-ahead. Only the line `yes` is accepted; leading/trailing spaces and excessive lines are rejected. A second confirmation must be entered after its prompt.
+
+Temporary SIGINT, SIGTERM and SIGHUP handlers interrupt the prompt only after its `finally` path restores original terminal attributes and handlers. Signals are blocked briefly during that restoration to prevent a second signal from interrupting cleanup. Unhandleable SIGKILL or loss of the terminal device cannot guarantee restoration. These guarantees cover input mechanics, not authorization through a captured Codex PTY; real authorization still belongs in the owner's own terminal.
+
+On macOS/Python 3.13, the combined real-PTY regression selection reported `Ran 13 tests`, `OK`; it includes eight connection, four identity-confirmation and one runtime-terminal tests. The additional cases first produced 11 failing subcases, then passed after correction. Six independent signal/paste/long-input probes also passed after the fix, preserving hidden input and original attributes. The full connection selection reported `Ran 40 tests in 13.433s`, `OK`, with no skips. No real GitHub account or native credential store was used.
+
+```sh
+.venv/bin/python -m unittest discover -s tests -p 'test_connection_terminal.py' -v
+```
 
 The bundled Codex skill is `.agents/skills/connect-service/SKILL.md`. The reusable runtime skill source is `hermes-skills/myhermes-connections/SKILL.md`; installing it is explicit and does not grant additional API access. Both use only published CLI commands and explicit connection/resource selection.
 

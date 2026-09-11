@@ -65,13 +65,13 @@ with patch.object(socket.socket,"connect",forbidden), patch.object(socket.socket
     results=[]
     for task in tasks:
         client,model=get_text_auxiliary_client(task)
-        results.append({"task":task,"managed_endpoint":str(client.base_url).rstrip("/")=="http://127.0.0.1:9/llm/v1","managed_model":model=="economy","managed_key":client.api_key==os.environ["MYHERMES_SESSION_TOKEN"]})
+        results.append({"task":task,"managed_endpoint":str(client.base_url).rstrip("/")=="http://127.0.0.1:9/llm/v1","managed_model":model=="economy","managed_key":client.api_key==os.environ["AUXILIARY_MYHERMES_API_KEY"]})
         client.close()
     assert path.read_text()==original
     assert _side_question_task_config()["provider"]==config["auxiliary"]["side_question"]["provider"]
     assert config["auxiliary"]["synthetic_plugin_task"]==direct
     from agent.background_review import _resolve_review_runtime
-    parent_runtime={"provider":"myhermes","model":"economy","base_url":"http://127.0.0.1:9/llm/v1","api_key":os.environ["MYHERMES_SESSION_TOKEN"],"api_mode":"chat_completions"}
+    parent_runtime={"provider":"myhermes","model":"economy","base_url":"http://127.0.0.1:9/llm/v1","api_key":os.environ["AUXILIARY_MYHERMES_API_KEY"],"api_mode":"chat_completions"}
     parent=SimpleNamespace(provider="myhermes",model="economy",_current_main_runtime=lambda:dict(parent_runtime))
     fork=_resolve_review_runtime(parent,_side_question_task_config())
     fork_managed=all(fork.get(key)==value for key,value in parent_runtime.items())
@@ -87,7 +87,7 @@ with patch.object(socket.socket,"connect",forbidden), patch.object(socket.socket
                     "HERMES_HOME": str(home),
                     "HERMES_MANAGED_DIR": str(overlay),
                     "HERMES_INFERENCE_PROVIDER": "myhermes",
-                    "MYHERMES_SESSION_TOKEN": token,
+                    "AUXILIARY_MYHERMES_API_KEY": token,
                     "PYTHONDONTWRITEBYTECODE": "1",
                 },
                 capture_output=True,

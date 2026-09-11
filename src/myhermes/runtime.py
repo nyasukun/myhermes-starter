@@ -450,7 +450,9 @@ def _managed_config(base_url, *, enabled_plugins=None):
                 "name": "myhermes",
                 "api": base_url,
                 "transport": "chat_completions",
-                "key_env": "MYHERMES_SESSION_TOKEN",
+                # The pinned upstream strips AUXILIARY_*_API_KEY from child
+                # environments, including forced passthrough and shell snapshots.
+                "key_env": "AUXILIARY_MYHERMES_API_KEY",
                 "enabled": True,
                 "default_model": "economy",
                 "models": {"economy": {"supports_vision": False}},
@@ -583,7 +585,7 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
         key: value
         for key, value in os.environ.items()
         if not key.upper().startswith(("OPENROUTER", "OPENAI_", "ANTHROPIC_", "LANGFUSE_", "HERMES_LANGFUSE_", "OTEL_"))
-        and key.upper()
+        and key.upper().removeprefix("_HERMES_FORCE_")
         not in (
             "HERMES_PROFILE",
             "HERMES_HOME",
@@ -591,6 +593,7 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
             "HERMES_IGNORE_USER_CONFIG",
             "HERMES_INFERENCE_PROVIDER",
             "HERMES_STREAM_RETRIES",
+            "AUXILIARY_MYHERMES_API_KEY",
             "MYHERMES_SESSION_TOKEN",
             "MYHERMES_STATE_DIR",
             "MYHERMES_MONITORING_URL",
@@ -620,13 +623,13 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
                 overlay = Path(temporary)
                 atomic_json(overlay / "config.yaml", _managed_config(bridge.base_url, enabled_plugins=enabled_plugins))
                 environment["HERMES_MANAGED_DIR"] = str(overlay)
-                environment["MYHERMES_SESSION_TOKEN"] = bridge.session_token
+                environment["AUXILIARY_MYHERMES_API_KEY"] = bridge.session_token
                 if on_activity is not None:
                     environment["MYHERMES_MONITORING_URL"] = bridge.base_url + "/myhermes/tool-events"
                 try:
                     yield command, environment
                 finally:
-                    environment.pop("MYHERMES_SESSION_TOKEN", None)
+                    environment.pop("AUXILIARY_MYHERMES_API_KEY", None)
                     environment.pop("HERMES_ENVIRONMENT_HINT", None)
 
 
@@ -704,7 +707,8 @@ def start_runtime(config, *, api=None, state_directory=None, on_activity=None):
     # One environment home; never account-kind profiles. Runtime conversation goes
     # directly to the owner's terminal, not the structured companion stdout.
     try:
-        terminal = open("/dev/tty", "r+")
+        # Buffered update mode requires seeking; terminal devices are streams.
+        terminal = open("/dev/tty", "r+b", buffering=0)
     except OSError:
         raise CompanionError("terminal_required", "Run myhermes start in your own interactive terminal.", 3) from None
     with terminal:

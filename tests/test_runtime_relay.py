@@ -54,7 +54,11 @@ class RuntimeRelayAcceptance(unittest.TestCase):
             "ANTHROPIC_API_KEY": "synthetic-other-key",
             "HERMES_IGNORE_USER_CONFIG": "1",
             "HERMES_PROFILE": "unwanted-profile",
-            "MYHERMES_SESSION_TOKEN": "synthetic-stale-token",
+            "AUXILIARY_MYHERMES_API_KEY": "synthetic-stale-token",
+            "auxiliary_myhermes_api_key": "synthetic-stale-lowercase-token",
+            "_HERMES_FORCE_AUXILIARY_MYHERMES_API_KEY": "synthetic-forced-stale-token",
+            "MYHERMES_SESSION_TOKEN": "synthetic-legacy-stale-token",
+            "_HERMES_FORCE_MYHERMES_SESSION_TOKEN": "synthetic-forced-legacy-token",
         }
         with patch.dict(os.environ, injected):
             with self.session() as (command, environment):
@@ -63,26 +67,26 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 self.assertEqual(environment["MYHERMES_STATE_DIR"], str(self.root / "state"))
                 self.assertEqual(environment["HERMES_STREAM_RETRIES"], "0")
                 self.assertEqual(environment["HERMES_INFERENCE_PROVIDER"], "myhermes")
-                self.assertNotEqual(environment["MYHERMES_SESSION_TOKEN"], injected["MYHERMES_SESSION_TOKEN"])
+                self.assertNotEqual(environment["AUXILIARY_MYHERMES_API_KEY"], injected["AUXILIARY_MYHERMES_API_KEY"])
                 for key in injected:
-                    if key != "MYHERMES_SESSION_TOKEN":
+                    if key != "AUXILIARY_MYHERMES_API_KEY":
                         self.assertNotIn(key, environment)
                 overlay = Path(environment["HERMES_MANAGED_DIR"])
                 contents = (overlay / "config.yaml").read_text()
-                self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], contents)
+                self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], contents)
                 self.assertNotIn("synthetic-company-key", contents)
                 self.assertEqual(overlay.stat().st_mode & 0o777, 0o700)
                 self.assertEqual((overlay / "config.yaml").stat().st_mode & 0o777, 0o600)
                 managed = json.loads(contents)
-                self.assertEqual(managed["providers"]["myhermes"]["key_env"], "MYHERMES_SESSION_TOKEN")
+                self.assertEqual(managed["providers"]["myhermes"]["key_env"], "AUXILIARY_MYHERMES_API_KEY")
                 self.assertEqual(managed["agent"]["api_max_retries"], 1)
                 self.assertIs(managed["skills"]["inline_shell"], False)
                 self.assertEqual(managed["auxiliary"]["transient_retries"], 0)
                 self.assertIsNone(managed["fallback_model"])
                 self.assertEqual((self.home / "config.yaml").read_bytes(), original)
-                self.assertEqual(os.environ["MYHERMES_SESSION_TOKEN"], "synthetic-stale-token")
+                self.assertEqual(os.environ["AUXILIARY_MYHERMES_API_KEY"], "synthetic-stale-token")
                 endpoint = urllib.parse.urlsplit(managed["providers"]["myhermes"]["api"])
-            self.assertNotIn("MYHERMES_SESSION_TOKEN", environment)
+            self.assertNotIn("AUXILIARY_MYHERMES_API_KEY", environment)
             self.assertFalse(overlay.exists())
             with self.assertRaises(OSError):
                 socket.create_connection((endpoint.hostname, endpoint.port), timeout=0.1)
@@ -101,8 +105,8 @@ class RuntimeRelayAcceptance(unittest.TestCase):
         with self.session() as (command, environment):
             result = subprocess.run([str(command)], env=environment, capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 0, "Synthetic child entrypoint failed")
-            self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
-            self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], str(result.args))
+            self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
+            self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], str(result.args))
             metadata = json.loads(result.stdout)
             self.assertEqual(
                 metadata, {"model": "economy", "home": str(self.home), "api_retry": 1, "stream_retry": "0"}
@@ -115,7 +119,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 overlay = Path(environment["HERMES_MANAGED_DIR"])
                 raise RuntimeError("synthetic crash")
         self.assertFalse(overlay.exists())
-        self.assertNotIn("MYHERMES_SESSION_TOKEN", environment)
+        self.assertNotIn("AUXILIARY_MYHERMES_API_KEY", environment)
         self.assertEqual(list((self.home / ".myhermes-runtime").iterdir()), [])
 
     def test_dotenv_presence_rejected_without_reading_or_changing_it(self):
@@ -181,7 +185,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 self.assertEqual(overlay["plugins"]["enabled"], ["owner-plugin", "myhermes-monitoring"])
                 self.assertEqual(environment["MYHERMES_MONITORING_URL"].split("/v1")[1], "/myhermes/tool-events")
                 installed = self.home / "plugins/myhermes-monitoring/__init__.py"
-                self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], installed.read_text())
+                self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], installed.read_text())
                 self.assertEqual((self.home / "config.yaml").read_text(), original)
         installed.write_text("# preserved user edit\n")
         with self.assertRaises(CompanionError) as raised:
@@ -266,7 +270,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
             self.assertEqual(
                 result.returncode, 0, "Pinned plugin discovery failed; raw output intentionally suppressed"
             )
-            self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+            self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
             self.assertIn("verified narrow hook", result.stdout)
         self.assertEqual(
             events,
@@ -304,7 +308,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 timeout=60,
             )
             self.assertEqual(result.returncode, 0, "Pinned skill preview probe failed; raw output suppressed")
-            self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+            self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
             self.assertEqual(
                 json.loads(result.stdout.strip().splitlines()[-1]),
                 {"literal": True, "executed": False, "inline_shell": False, "template_vars": False},
@@ -326,7 +330,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 "from agent.auxiliary_client import _transient_retry_count\n"
                 "config=load_config()\n"
                 "runtime=resolve_runtime_provider(requested='myhermes',target_model='economy')\n"
-                "print(json.dumps({'provider':config['model']['provider'],'model':config['model']['default'],'api_mode':runtime['api_mode'],'token_matches':runtime['api_key']==os.environ['MYHERMES_SESSION_TOKEN'],'base_matches':runtime['base_url']==config['providers']['myhermes']['api'],'retry':config['agent']['api_max_retries'],'aux_retry':_transient_retry_count()}))\n"
+                "print(json.dumps({'provider':config['model']['provider'],'model':config['model']['default'],'api_mode':runtime['api_mode'],'token_matches':runtime['api_key']==os.environ['AUXILIARY_MYHERMES_API_KEY'],'base_matches':runtime['base_url']==config['providers']['myhermes']['api'],'retry':config['agent']['api_max_retries'],'aux_retry':_transient_retry_count()}))\n"
             )
             result = subprocess.run(
                 [str(upstream / ".venv/bin/python"), "-c", script],
@@ -339,7 +343,7 @@ class RuntimeRelayAcceptance(unittest.TestCase):
             self.assertEqual(
                 result.returncode, 0, "Pinned upstream config probe failed; raw output intentionally suppressed"
             )
-            self.assertNotIn(environment["MYHERMES_SESSION_TOKEN"], result.stdout + result.stderr)
+            self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], result.stdout + result.stderr)
             self.assertEqual(
                 json.loads(result.stdout.strip().splitlines()[-1]),
                 {
