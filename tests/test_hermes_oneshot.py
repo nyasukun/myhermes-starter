@@ -10,10 +10,13 @@ from myhermes.runtime import relay_runtime_session
 from test_relay_bridge import company
 
 
-@unittest.skipUnless(os.getenv("MYHERMES_TEST_UPSTREAM"), "Requires the explicitly selected installed Hermes checkout")
+@unittest.skipUnless(
+    os.getenv("MYHERMES_TEST_UPSTREAM") and os.getenv("MYHERMES_TEST_DOCKER") == "1",
+    "Requires the pinned checkout and explicit local Docker execution opt-in",
+)
 class HermesOneshotAcceptance(unittest.TestCase):
     def test_real_cli_completes_synthetic_turn_through_device_bridge(self):
-        with tempfile.TemporaryDirectory(prefix="myhermes-oneshot-") as directory:
+        with tempfile.TemporaryDirectory(prefix=".myhermes-oneshot-", dir=Path(__file__).parent.parent) as directory:
             home = Path(os.path.realpath(directory)) / "home"
             config = {"upstream": os.environ["MYHERMES_TEST_UPSTREAM"], "hermes_home": str(home)}
             events = []

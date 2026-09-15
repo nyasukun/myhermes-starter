@@ -468,7 +468,14 @@ def _execute(args, on_activity=None):
             }
         if args.command == "start" and args.dry_run:
             verify_runtime(Path(config["upstream"]), require_installed=False)
-            return {"status": "dry_run", "sync_before_start": not args.offline, "hermes_version": UPSTREAM_VERSION}
+            return {
+                "status": "dry_run",
+                "sync_before_start": not args.offline,
+                "hermes_version": UPSTREAM_VERSION,
+                "terminal_backend": "docker",
+                "sandbox_required": True,
+                "workspace": "/workspace",
+            }
         if args.command == "start" and args.offline:
             with memory_locks(home):
                 state.recover(home)

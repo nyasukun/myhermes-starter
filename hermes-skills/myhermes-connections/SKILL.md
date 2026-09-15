@@ -5,7 +5,9 @@ description: Read repositories and issues through explicit owner-scoped MyHermes
 
 # MyHermes connections
 
-Use the installed `myhermes` CLI with `MYHERMES_STATE_DIR` supplied by the current managed Hermes launch. Before invoking it, check only whether this variable is set and nonempty with `test -n "${MYHERMES_STATE_DIR:-}"`; do not print its value or dump the environment. If the check fails, stop and have the owner confirm the current managed setup. Do not search for, guess, or fall back to another state directory or the CLI default. Always pass `--state-dir "$MYHERMES_STATE_DIR"`, quoted as shown.
+Managed MyHermes runs terminal and execute_code in Docker by default. The host companion CLI, state directory and native credential store are intentionally unavailable inside that sandbox. Do not run the commands below in Hermes terminal/execute_code, install the companion inside Docker, mount the host state/keychain, switch to local execution, or construct a host-execution workaround. Prepare the exact command for the owner to run in their own native host terminal, and continue with the nonsecret result they choose to share. There is no sandbox-to-host connection bridge in this release.
+
+The commands below are **owner native-terminal instructions**. Use the installed `myhermes` CLI with `MYHERMES_STATE_DIR` explicitly set by the owner to the same state directory used for their managed setup. Before invoking it, check only whether this variable is set and nonempty with `test -n "${MYHERMES_STATE_DIR:-}"`; do not print its value or dump the environment. If the check fails, stop and have the owner confirm the current managed setup. Do not search for, guess, or fall back to another state directory or the CLI default. Always pass `--state-dir "$MYHERMES_STATE_DIR"`, quoted as shown.
 
 Do not infer an account or resource from an unrelated global GitHub login. This skill supports repository metadata and issue reads only; it cannot send messages, modify issues, push code, or authorize accounts.
 

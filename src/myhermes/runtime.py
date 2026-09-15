@@ -31,6 +31,7 @@ from .files import (
 )
 from .relay_bridge import RelayBridge
 from .local_config import canonical_identifier
+from .sandbox import managed_terminal_config, sandbox_preflight, terminal_environment
 
 UPSTREAM_URL = "https://github.com/NousResearch/hermes-agent.git"
 UPSTREAM_VERSION = "v2026.9.7"
@@ -520,7 +521,7 @@ def _launch_preflight(home, upstream):
     return value
 
 
-def _managed_config(base_url, *, enabled_plugins=None):
+def _managed_config(base_url, *, enabled_plugins=None, sandbox_directory=None):
     # JSON is valid YAML. The file contains only routing metadata and env names,
     # never a credential value. Managed leaves override user settings upstream.
     auxiliary = {
@@ -562,6 +563,7 @@ def _managed_config(base_url, *, enabled_plugins=None):
         # Viewing a distributed skill is a read. Owner config must not turn
         # inline Markdown snippets into implicit shell execution during preview.
         "skills": {"inline_shell": False},
+        "terminal": managed_terminal_config(sandbox_directory),
         "auxiliary": auxiliary,
         "fallback_model": None,
         "telemetry": {"shared_metrics": {"enabled": False, "send": False}},
@@ -681,12 +683,14 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
     user_config = _launch_preflight(home, upstream)
     if api is None or not api.private_key or not api.installation_id:
         raise CompanionError("not_enrolled", "Managed Hermes startup requires an enrolled installation.", 3)
+    sandbox_directory = safe_path(private_dir(home / "myhermes-sandboxes"))
+    docker = sandbox_preflight(user_config, sandbox_directory)
     environment = {
         key: value
         for key, value in os.environ.items()
         if not key.upper()
         .removeprefix("_HERMES_FORCE_")
-        .startswith(("OPENROUTER", "OPENAI_", "ANTHROPIC_", "LANGFUSE_", "HERMES_LANGFUSE_", "OTEL_"))
+        .startswith(("OPENROUTER", "OPENAI_", "ANTHROPIC_", "LANGFUSE_", "HERMES_LANGFUSE_", "OTEL_", "TERMINAL_"))
         and key.upper().removeprefix("_HERMES_FORCE_")
         not in (
             "HERMES_PROFILE",
@@ -700,6 +704,7 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
             "MYHERMES_STATE_DIR",
             "MYHERMES_MONITORING_URL",
             "HERMES_ENVIRONMENT_HINT",
+            "HERMES_DOCKER_BINARY",
         )
     }
     environment.update(
@@ -709,10 +714,12 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
             "HERMES_INFERENCE_PROVIDER": "myhermes",
             "PYTHONDONTWRITEBYTECODE": "1",
             "HERMES_ENVIRONMENT_HINT": _environment_hint(user_config, api.installation_id),
+            "HERMES_DOCKER_BINARY": docker,
         }
     )
-    # The companion console entrypoint must remain available to managed skills
-    # when the user launched it by absolute path outside an activated venv.
+    environment.update(terminal_environment(managed_terminal_config(sandbox_directory)))
+    # Keep the console entrypoint discoverable to host-owned integrations.
+    # Docker tools do not inherit this PATH or receive the companion/native store.
     companion_bin = Path(sys.executable).parent
     if (companion_bin / "myhermes").is_file():
         environment["PATH"] = str(companion_bin) + os.pathsep + environment.get("PATH", os.defpath)
@@ -723,7 +730,12 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
         with RelayBridge(api, allow_local_http=allow_local_http, on_activity=on_activity) as bridge:
             with tempfile.TemporaryDirectory(prefix="launch-", dir=temporary_parent) as temporary:
                 overlay = Path(temporary)
-                atomic_json(overlay / "config.yaml", _managed_config(bridge.base_url, enabled_plugins=enabled_plugins))
+                atomic_json(
+                    overlay / "config.yaml",
+                    _managed_config(
+                        bridge.base_url, enabled_plugins=enabled_plugins, sandbox_directory=sandbox_directory
+                    ),
+                )
                 environment["HERMES_MANAGED_DIR"] = str(overlay)
                 environment["AUXILIARY_MYHERMES_API_KEY"] = bridge.session_token
                 if on_activity is not None:
@@ -736,6 +748,9 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
 
 
 _TERMINATION_GRACE_SECONDS = 10
+# Upstream Docker shutdown can spend 10 seconds in docker stop, then remove
+# the owned container and drain its cleanup thread. Do not kill it mid-removal.
+_MANAGED_TERMINATION_GRACE_SECONDS = 30
 
 
 def _run_managed_child(command, *, env, stdin, stdout, stderr):
@@ -746,7 +761,7 @@ def _run_managed_child(command, *, env, stdin, stdout, stderr):
         nonlocal requested, deadline
         if requested is None:
             requested = signum
-            deadline = time.monotonic() + _TERMINATION_GRACE_SECONDS
+            deadline = time.monotonic() + _MANAGED_TERMINATION_GRACE_SECONDS
         if child is not None:
             try:
                 child.send_signal(signum)

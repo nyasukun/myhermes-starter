@@ -37,6 +37,9 @@ class RuntimeRelayAcceptance(unittest.TestCase):
         self.command.write_text("#!" + sys.executable + "\n")
         self.command.chmod(0o700)
         self.stack.enter_context(patch("myhermes.runtime.verify_runtime", return_value=self.command))
+        # Relay fixtures do not exercise Docker. Sandbox policy/preflight and
+        # real container execution have their own dedicated acceptance tests.
+        self.stack.enter_context(patch("myhermes.runtime.sandbox_preflight", return_value="/fixture/docker"))
 
     def session(self):
         return relay_runtime_session(

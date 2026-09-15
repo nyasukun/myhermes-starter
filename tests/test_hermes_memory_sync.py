@@ -27,7 +27,10 @@ MEMORY = "The fictional project uses a blue notebook for examples."
 USER = "The fictional owner prefers concise example summaries."
 
 
-@unittest.skipUnless(os.getenv("MYHERMES_TEST_UPSTREAM"), "Requires the explicitly selected installed Hermes checkout")
+@unittest.skipUnless(
+    os.getenv("MYHERMES_TEST_UPSTREAM") and os.getenv("MYHERMES_TEST_DOCKER") == "1",
+    "Requires the pinned checkout and explicit local Docker execution opt-in",
+)
 class HermesMemorySyncAcceptance(unittest.TestCase):
     def test_official_memory_tools_persist_and_sync_at_managed_session_exit(self):
         upstream = Path(os.environ["MYHERMES_TEST_UPSTREAM"])
@@ -60,7 +63,11 @@ class HermesMemorySyncAcceptance(unittest.TestCase):
             }, "tool_calls"
 
         with ExitStack() as stack:
-            root = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="myhermes-memory-sync-"))).resolve()
+            root = Path(
+                stack.enter_context(
+                    tempfile.TemporaryDirectory(prefix=".myhermes-memory-sync-", dir=Path(__file__).parent.parent)
+                )
+            ).resolve()
             directory, home = root / "state", root / "home"
             argv = ["--state-dir", str(directory)]
             cli.execute(

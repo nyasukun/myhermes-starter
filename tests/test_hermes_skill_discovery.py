@@ -16,7 +16,10 @@ from myhermes.skill_state import SkillState
 from test_relay_bridge import company
 
 
-@unittest.skipUnless(os.getenv("MYHERMES_TEST_UPSTREAM"), "Requires the explicitly selected installed Hermes checkout")
+@unittest.skipUnless(
+    os.getenv("MYHERMES_TEST_UPSTREAM") and os.getenv("MYHERMES_TEST_DOCKER") == "1",
+    "Requires the pinned checkout and explicit local Docker execution opt-in",
+)
 class HermesSkillDiscoveryAcceptance(unittest.TestCase):
     def test_four_skills_share_one_official_runtime_and_initial_model_context(self):
         installed = os.getenv("MYHERMES_TEST_INSTALLED")
@@ -24,7 +27,7 @@ class HermesSkillDiscoveryAcceptance(unittest.TestCase):
             self.assertTrue(Path(myhermes.__file__).is_relative_to(Path(installed)))
         upstream = Path(os.environ["MYHERMES_TEST_UPSTREAM"])
         expected = {"myhermes-skills", "myhermes-connections", "mh-personal-demo", "mh-company-demo"}
-        with tempfile.TemporaryDirectory(prefix="myhermes-discovery-") as directory:
+        with tempfile.TemporaryDirectory(prefix=".myhermes-discovery-", dir=Path(__file__).parent.parent) as directory:
             root = Path(directory).resolve()
             home = root / "home"
             home.mkdir(mode=0o700)

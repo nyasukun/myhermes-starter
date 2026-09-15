@@ -2,6 +2,10 @@
 
 Verified on 2026-09-11 against the official Nous Research repository. This document distinguishes inspected source behavior from runtime verification. MyHermes is a companion to local Hermes installations; it does not move Hermes execution or session storage into the control plane.
 
+## Managed sandbox policy added on 2026-09-15
+
+The current companion overrides upstream's local terminal default with a mandatory Docker backend through managed config and environment. Startup proves local-daemon bind visibility; terminal, code execution and ordinary file tools share that sandbox. Host controller/memory/plugin execution is a separate boundary. See [SANDBOX.md](SANDBOX.md) for configuration, credentials, read-only skill/cache mounts, owner migration and actual Docker verification. Earlier local-backend tests below describe the inspected upstream surface or historical behavior and do not select the current managed default.
+
 ## Pinned source
 
 | Property | Verified value |

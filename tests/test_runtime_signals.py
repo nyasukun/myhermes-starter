@@ -24,7 +24,7 @@ from test_session_sync import SessionSyncAcceptance
 outer=Path(sys.argv[1]);mode=sys.argv[2]
 t=SessionSyncAcceptance();t.setUp()
 (outer/'fixture.json').write_text(json.dumps({'home':str(t.home),'root':str(t.root)}))
-runtime._TERMINATION_GRACE_SECONDS=0.4
+runtime._MANAGED_TERMINATION_GRACE_SECONDS=0.4
 original={kind:signal.getsignal(kind) for kind in (signal.SIGTERM,signal.SIGHUP)}
 child_code=r"""
 import json,os,signal,time

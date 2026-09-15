@@ -107,7 +107,7 @@ scripts/check-ubuntu-container.sh
 MYHERMES_CHECK_UPSTREAM=1 scripts/check-ubuntu-container.sh
 ```
 
-The second command additionally installs the fixed official upstream and runs actual runtime/config/plugin/inline-shell, environment-hint, auxiliary-provider, terminal-credential isolation, real runtime PTY, managed-signal, strict-header/discovery, one-turn and memory-tool/session-exit probes. Both commands create and remove disposable containers with no host mounts. They download public OS/Python packages and retain only the official base-image cache on the host. Optional local validation reports contain source hashes and synthetic results only. The script refuses a non-local Docker endpoint.
+The second command additionally installs the fixed official upstream and runs actual runtime/config/plugin/inline-shell, environment-hint, auxiliary-provider, terminal-credential isolation, real runtime PTY, managed-signal, strict-header/discovery and sandbox-policy probes. Since the 2026-09-15 sandbox default, full managed one-turn and memory/session checks require the separate native Docker lane in [SANDBOX.md](SANDBOX.md); this runner provides no nested daemon or host Docker socket. Both commands create and remove disposable containers with no host mounts. They download public OS/Python packages and retain only the official base-image cache on the host. Optional local validation reports contain source hashes and synthetic results only. The script refuses a non-local Docker endpoint.
 
 For the owner's explicit native macOS check:
 
@@ -118,8 +118,8 @@ MYHERMES_NATIVE_KEYRING=1 .venv/bin/python -m unittest discover -s tests -p test
 For existing installed pinned upstream and installer recovery fixtures:
 
 ```sh
-MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent .venv/bin/python -m unittest discover -s tests -p test_hermes_oneshot.py -v
-MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent .venv/bin/python -m unittest discover -s tests -p test_hermes_memory_sync.py -v
+MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent MYHERMES_TEST_DOCKER=1 .venv/bin/python -m unittest discover -s tests -p test_hermes_oneshot.py -v
+MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent MYHERMES_TEST_DOCKER=1 .venv/bin/python -m unittest discover -s tests -p test_hermes_memory_sync.py -v
 MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent .venv/bin/python -m unittest discover -s tests -p test_runtime_environment.py -v
 MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent .venv/bin/python -m unittest discover -s tests -p test_runtime_auxiliary.py -v
 MYHERMES_TEST_UPSTREAM=/absolute/path/to/hermes-agent .venv/bin/python -m unittest discover -s tests -p test_runtime_credential_scrub.py -v

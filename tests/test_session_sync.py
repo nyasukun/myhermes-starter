@@ -69,6 +69,7 @@ class SessionSyncAcceptance(unittest.TestCase):
         )
         self.child = self.upstream / "synthetic-hermes"
         self.stack.enter_context(patch("myhermes.runtime.verify_runtime", return_value=self.child))
+        self.stack.enter_context(patch("myhermes.runtime.sandbox_preflight", return_value="/fixture/docker"))
 
         def bridge(api, **kwargs):
             kwargs["allow_local_http"] = True
@@ -87,6 +88,19 @@ class SessionSyncAcceptance(unittest.TestCase):
             code = main([*self.argv, *args])
         self.assertNotIn("SYNTHETIC_SESSION_MEMORY", output.getvalue())
         return code, json.loads(output.getvalue())
+
+    def test_start_dry_run_reports_sandbox_policy_without_admitting_or_starting_docker(self):
+        with (
+            patch("myhermes.cli.verify_runtime"),
+            patch("myhermes.runtime.sandbox_preflight") as preflight,
+            patch("myhermes.cli.owner_api", side_effect=AssertionError("dry-run network")),
+        ):
+            code, result = self.command("start", "--dry-run")
+        self.assertEqual(code, 0)
+        self.assertEqual(result["terminal_backend"], "docker")
+        self.assertIs(result["sandbox_required"], True)
+        self.assertEqual(result["workspace"], "/workspace")
+        preflight.assert_not_called()
 
     def write_child(self, *, code=0, content="SYNTHETIC_SESSION_MEMORY"):
         self.child.write_text(
