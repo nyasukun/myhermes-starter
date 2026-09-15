@@ -11,6 +11,7 @@ import re
 import secrets
 import select
 import socket
+from socketserver import TCPServer
 import ssl
 import threading
 import time
@@ -176,6 +177,13 @@ class _Server(ThreadingHTTPServer):
         self.bridge = bridge
         self.slots = threading.BoundedSemaphore(bridge.max_connections)
         super().__init__(("127.0.0.1", 0), _Handler)
+
+    def server_bind(self):
+        # HTTPServer normally reverse-resolves even a numeric loopback address.
+        # No hostname is needed here; macOS resolver stalls must not block
+        # managed startup before its signal handlers can run.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):

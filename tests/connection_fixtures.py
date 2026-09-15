@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import copy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+from socketserver import TCPServer
 import threading
 import urllib.parse
 import urllib.request
@@ -13,6 +14,13 @@ from myhermes.api import NoRedirect
 from myhermes.connection_schema import sha256
 from myhermes.errors import CompanionError, OfflineError
 from myhermes.github import API_ORIGIN, API_VERSION, GitHubClient
+
+
+class LoopbackFixtureServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # Binding 127.0.0.1 needs no potentially slow macOS reverse lookup.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 def token_for(account_id):
@@ -315,7 +323,7 @@ def github_http_fixture():
             self.end_headers()
             self.wfile.write(raw)
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server = LoopbackFixtureServer(("127.0.0.1", 0), Handler)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     opener = urllib.request.build_opener(NoRedirect(), urllib.request.ProxyHandler({}))

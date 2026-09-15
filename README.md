@@ -32,7 +32,7 @@ npm run check
 .venv/bin/ruff check src tests
 ```
 
-Python 3.11または3.12を選ぶ場合は最初のコマンドを置き換えてください。Public単独でのテストは会社のPrivate repoや実アカウントを必要としません。CIにはUbuntu/macOSを設定していますが、まだCIを実行したと主張するものではありません。
+Python 3.11または3.12を選ぶ場合は最初のコマンドを置き換えてください。Public単独でのテストは会社のPrivate repoや実アカウントを必要としません。Ubuntu/macOSのCI実行結果は[GitHub Actions](https://github.com/nyasukun/myhermes-starter/actions)で確認できます。
 
 ## 利用を始める
 

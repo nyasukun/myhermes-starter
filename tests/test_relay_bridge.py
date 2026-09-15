@@ -10,6 +10,7 @@ import io
 import json
 import select
 import socket
+from socketserver import TCPServer
 import threading
 import time
 import unittest
@@ -44,6 +45,12 @@ def decode_jwt(value, key):
 class FixtureServer(ThreadingHTTPServer):
     daemon_threads = True
     block_on_close = False
+
+    def server_bind(self):
+        # Numeric loopback fixtures must not depend on reverse DNS, including
+        # fresh signal-test processes without the parent's resolver cache.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
     def handle_error(self, *_):
         pass
@@ -301,6 +308,19 @@ def company(*, completion_text=None, on_request=None, completion_factory=None):
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
+
+
+class LoopbackStartupAcceptance(unittest.TestCase):
+    def test_relay_and_both_synthetic_servers_start_without_reverse_dns(self):
+        from connection_fixtures import github_http_fixture
+
+        with patch("socket.getfqdn", side_effect=AssertionError("Numeric loopback needs no reverse DNS")) as reverse:
+            with github_http_fixture(), company() as peer:
+                with RelayBridge(peer["api"], allow_local_http=True) as bridge:
+                    self.assertEqual(bridge._server.server_name, "127.0.0.1")
+                    self.assertGreater(bridge._server.server_port, 0)
+                    self.assertTrue(bridge.base_url.startswith("http://127.0.0.1:"))
+            reverse.assert_not_called()
 
 
 class BridgeAcceptance(unittest.TestCase):

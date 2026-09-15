@@ -14,12 +14,19 @@ from myhermes.errors import CompanionError
 from myhermes.files import file_lock
 
 LAUNCHER = r'''
-import json,os,signal,sys,time
+import json,os,signal,socket,sys,time
 from pathlib import Path
 from unittest.mock import patch
 from myhermes import runtime
 from myhermes.state import State
 from test_session_sync import SessionSyncAcceptance
+
+# Prove bootstrap and managed relay startup do not ask the OS resolver to
+# reverse-resolve numeric loopback. A slow lookup used to hide every signal
+# scenario behind its fixture.json readiness timeout on macOS CI.
+def unexpected_reverse_lookup(*_args, **_kwargs):
+    raise AssertionError('Numeric-loopback startup unexpectedly used reverse DNS')
+socket.getfqdn=unexpected_reverse_lookup
 
 outer=Path(sys.argv[1]);mode=sys.argv[2]
 t=SessionSyncAcceptance();t.setUp()
@@ -79,7 +86,10 @@ class RuntimeSignalAcceptance(unittest.TestCase):
         until = time.monotonic() + timeout
         while not path.exists() and parent.poll() is None and time.monotonic() < until:
             time.sleep(0.01)
-        self.assertTrue(path.exists(), "Synthetic signal fixture did not reach the expected boundary")
+        self.assertTrue(
+            path.exists(),
+            f"Synthetic signal fixture did not reach {path.name}; launcher exit status: {parent.poll()}",
+        )
 
     def scenario(self, mode, kind=signal.SIGTERM):
         with tempfile.TemporaryDirectory(prefix="myhermes-signal-test-") as temporary:
