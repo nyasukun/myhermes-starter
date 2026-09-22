@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
+from myhermes import __version__
 from myhermes.api import API
 from myhermes.auth import b64, public_jwk
 from myhermes.errors import CompanionError
@@ -70,6 +71,7 @@ def company(*, completion_text=None, on_request=None, completion_factory=None):
         "cancelled": threading.Event(),
         "release": threading.Event(),
         "tokens": [],
+        "user_agents": [],
     }
 
     class Handler(BaseHTTPRequestHandler):
@@ -107,6 +109,8 @@ def company(*, completion_text=None, on_request=None, completion_factory=None):
                 raise
 
         def _api(self):
+            with state["lock"]:
+                state["user_agents"].append((self.path, self.headers.get_all("User-Agent")))
             raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
             value = json.loads(raw) if raw else None
             if self.path == "/v1/auth/token":
@@ -308,6 +312,21 @@ def company(*, completion_text=None, on_request=None, completion_factory=None):
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
+
+
+class APITransportAcceptance(unittest.TestCase):
+    def test_token_and_authenticated_requests_identify_the_companion(self):
+        with company() as peer:
+            status, _ = peer["api"].request("GET", "/v1/sync")
+            self.assertEqual(status, 200)
+            self.assertEqual(
+                peer["user_agents"],
+                [
+                    ("/v1/auth/token", ["myhermes-companion/" + __version__]),
+                    ("/v1/sync", ["myhermes-companion/" + __version__]),
+                ],
+            )
+            self.assertEqual(peer["errors"], [])
 
 
 class LoopbackStartupAcceptance(unittest.TestCase):

@@ -8,6 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import __version__
 from .auth import assertion, dpop
 from .errors import CompanionError, OfflineError
 
@@ -58,7 +59,12 @@ class API:
             url,
             data=data,
             method=method,
-            headers={"Accept": "application/json", "Content-Type": "application/json", **(headers or {})},
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "myhermes-companion/" + __version__,
+                **(headers or {}),
+            },
         )
         try:
             try:
