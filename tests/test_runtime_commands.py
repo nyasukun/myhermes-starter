@@ -49,22 +49,47 @@ home=root/'home'; atomic_content(home,'SOUL.md','Synthetic owner persona')
 state=State(root/'state')
 previous={sig:signal.getsignal(sig) for sig in (signal.SIGTERM,signal.SIGHUP,signal.SIGINT)}
 actual=subprocess.Popen
+actual_killpg=os.killpg
+forwarded=[]
+def forward(group,kind):
+ forwarded.append(kind)
+ return actual_killpg(group,kind)
+def wait_for_marker(name):
+ deadline=time.monotonic()+5
+ while not (root/name).exists():
+  if time.monotonic()>=deadline: raise RuntimeError('signal_delivery_timeout')
+  time.sleep(.01)
 def create(*args,**kwargs):
  if mode=='before_spawn': os.kill(os.getpid(),signal.SIGTERM)
  result=actual(*args,**kwargs)
  (root/'spawned').write_text(str(result.pid))
  if mode=='after_spawn': os.kill(os.getpid(),signal.SIGTERM)
+ if mode=='ignore':
+  actual_communicate=result.communicate
+  delivered=False
+  def communicate(*args,**kwargs):
+   nonlocal delivered
+   if not delivered:
+    wait_for_marker('deliver')
+    delivered=True
+    kind=int((root/'deliver').read_text())
+    for _ in range(5): os.kill(os.getpid(),kind)
+    (root/'delivered').touch()
+    wait_for_marker('continue')
+   return actual_communicate(*args,**kwargs)
+  result.communicate=communicate
  return result
 runtime.install_runtime=lambda *args,**kwargs: runtime.checked([sys.executable,'-c',child_code,str(root),mode])
 with file_lock(home/'.myhermes-session.lock'):
  try:
-  with patch.object(runtime.subprocess,'Popen',side_effect=create):
+  with patch.object(runtime.subprocess,'Popen',side_effect=create), patch.object(runtime.os,'killpg',side_effect=forward):
    runtime.upgrade_runtime(state,home,root/'unused','unused')
  except CompanionError as error:
   result={'error':error.code,'exit_code':error.exit_code,'backup_id_reported':'backup ID:' in error.message,'output_suppressed':'SYNTHETIC_SUBPROCESS_PRIVATE_OUTPUT' not in error.message}
  except BaseException as error:
   result={'unexpected':type(error).__name__}
  else: result={'unexpected':'no_error'}
+ if mode=='ignore': result['interrupts_forwarded']=len([kind for kind in forwarded if kind!=signal.SIGKILL])
  result['handlers_restored']=all(signal.getsignal(sig)==old for sig,old in previous.items())
  (root/'completed').write_text(json.dumps(result))
  while not (root/'release').exists(): time.sleep(.01)
@@ -119,18 +144,26 @@ class RuntimeCommandTermination(unittest.TestCase):
                     if mode == "grandchild":
                         pids.append(int((root / "grandchild").read_text()))
                     if mode != "timeout":
-                        os.kill(parent.pid, kind)
+                        if mode == "ignore":
+                            # Deliver inside communicate(), while checked() owns
+                            # the handlers, then hold that boundary for the lock
+                            # assertion. Never signal after handler restoration.
+                            marker = root / "deliver.pending"
+                            marker.write_text(str(int(kind)))
+                            marker.replace(root / "deliver")
+                            self.wait_for(root / "delivered", parent)
+                        else:
+                            os.kill(parent.pid, kind)
                         with self.assertRaises(CompanionError) as held:
                             with file_lock(root / "home/.myhermes-session.lock"):
                                 pass
                         self.assertEqual(held.exception.code, "home_busy")
-                        for _ in range(4):
-                            if (root / "completed").exists():
-                                break
-                            time.sleep(0.05)
-                            os.kill(parent.pid, kind)
+                        if mode == "ignore":
+                            (root / "continue").touch()
                 self.wait_for(root / "completed", parent, timeout=2)
                 result = json.loads((root / "completed").read_text())
+                if mode == "ignore":
+                    self.assertEqual(result.pop("interrupts_forwarded"), 5)
                 self.assertEqual(
                     result,
                     {

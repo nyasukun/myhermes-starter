@@ -149,3 +149,18 @@ Recorded before the additional recovery implementation/tests:
 - R06: Dry-run validates the intended backup/operation without creating backup files or changing personality, runtime or outbox state.
 
 Earlier additional macOS results: the repair/rollback acceptance suite passed11 tests. The combined installer/recovery/runtime selection ran29 tests, with27 passed and2 explicit-upstream probes skipped; the separate relay fixture regression passed20 tests. The subsequent Ubuntu288- and302-test snapshots also run these repair/rollback and same-home identity-recovery suites; the prior results remain associated with their recorded snapshots.
+
+## Installer signal fixture acceptance — 2026-09-22
+
+Recorded before changing the macOS CI regression fixture:
+
+- S01: Deliver five real TERM, HUP or INT signals while the installer's temporary handlers are active, and verify all five signals are forwarded to its child process group.
+- S02: Coordinate delivery explicitly with the supervising test. A polling delay must never send a signal after the installer has completed cleanup and restored the caller's handlers.
+- S03: Preserve checks that the session lock stays held, an ignoring child is killed and reaped, output remains suppressed, the backup ID is reported, original handlers are restored and the fixture exits normally.
+- S04: Keep direct-child/grandchild, timeout, spawn-race and spawn-failure coverage. Do not change production signal handling to accommodate fixture teardown.
+
+The failed macOS CI run reached the expected sanitized result before its fixture process exited from TERM or INT. The supervisor checked the completion marker, slept, then sent another signal without any synchronization with handler restoration. That permits a signal intended for installer cleanup to reach the caller after cleanup. Validation results for the corrected fixture are recorded separately from earlier OS snapshots.
+
+The corrected fixture publishes its signal request atomically. Inside the real child's first `communicate()` call, it delivers five real signals to itself while the installer's handlers are active, counts the forwarded child-group signals, and waits for the supervisor to verify the held session lock before allowing cleanup to continue. Production signal handling is unchanged.
+
+Local macOS/Python3.11.15 validation passed: all7 installer-command tests; the ordinary335-test suite with320 passed and15 explicit opt-in skips; Ruff check/format for77 files; and public core/type/schema checks with70 tests passed. Increasing only the previous supervisor polling sleep from50 to500ms reproduced its `-15` exit deterministically. The corrected fixture passed a separate500ms supervisor delay after signal delivery, longer than its350ms termination grace, retaining all child/lock/handler assertions. The Python3.13 macOS/Ubuntu CI matrix must verify the pushed change separately; these local results do not claim that matrix has run.
