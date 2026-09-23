@@ -9,6 +9,7 @@ Hermes Agentを本人の複数環境で利用するための公開コンパニ�
 - skillsは参照資料・スクリプト・バイナリを含むpackageを扱い、会社配布と本人用を別の権限で管理します。本人用の自動全社公開は行いません。
 - relayは通常応答・SSE・function tools・構造化出力、モデル/プロバイダー許可、利用量の確定と未取得を扱います。監視の受信検証・保存・集計は公開module内で定義します。異常検知や自動処分は実装しません。
 - `myhermes start`はDockerによる端末・コード・対応するファイル操作のサンドボックスを既定とし、利用できない場合は起動を止めます。Hermes本体と認証・同期はホストで動きます。[サンドボックスの設定と範囲](docs/SANDBOX.md)を参照してください。
+- Macの標準GUIは`myhermes desktop`で起動します。初回に`myhermes prepare-desktop`を実行すると、MyHermesの同期・推論先制限を使うHermes Desktopを準備できます。[GUIの管理範囲](docs/DESKTOP.md)を参照してください。
 
 ## 構成
 
@@ -22,10 +23,10 @@ Hermes Agentを本人の複数環境で利用するための公開コンパニ�
 
 ## ローカル開発
 
-Node.js 24以上、Python 3.11–3.13、Gitを使います。コンパニオンの実行を確認したPythonは3.11–3.13です。3.14は未検証で、採用Hermes本体も3.14をサポートしていません。
+Node.js 24以上、Python 3.11以上、Gitを使います。コンパニオンはPython 3.14でも実行できます。固定しているHermes本体は現時点で3.14に対応していないため、Hermes runtime用にPython 3.11〜3.13も用意してください。MacでPython 3.14が標準の場合、Homebrewなら`brew install python@3.13`で併設できます。
 
 ```sh
-python3.13 -m venv .venv
+python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
 npm ci
 npm run check
@@ -33,7 +34,7 @@ npm run check
 .venv/bin/ruff check src tests
 ```
 
-Python 3.11または3.12を選ぶ場合は最初のコマンドを置き換えてください。Public単独でのテストは会社のPrivate repoや実アカウントを必要としません。Ubuntu/macOSのCI実行結果は[GitHub Actions](https://github.com/nyasukun/myhermes-starter/actions)で確認できます。
+最初のコマンドはコンパニオン用venvを`python3`で作成します。固定Hermes本体の導入・更新には、別途`python3.13`など3.11〜3.13の実行ファイルを`install-runtime --python`または`upgrade --python`へ渡してください。Public単独でのテストは会社のPrivate repoや実アカウントを必要としません。Ubuntu/macOSのCI実行結果は[GitHub Actions](https://github.com/nyasukun/myhermes-starter/actions)で確認できます。
 
 ## 利用を始める
 
@@ -57,7 +58,7 @@ Python 3.11または3.12を選ぶ場合は最初のコマンドを置き換え�
 
 ## 採用upstreamと公開境界
 
-公式Hermes Agent `v2026.9.7` / `2237be355906fbe6065ce1815711eee52b2d646e`を採用します。[互換性調査](docs/UPSTREAM_COMPATIBILITY.md)に実パス、形式、読み込みタイミング、上限、ライセンスと固定sourceを記録しています。独自forkは作りません。
+公式Hermes Agent `v2026.9.7` / `2237be355906fbe6065ce1815711eee52b2d646e`を採用します。[互換性調査](docs/UPSTREAM_COMPATIBILITY.md)に実パス、形式、読み込みタイミング、上限、ライセンスと固定sourceを記録しています。公式checkoutは変更せず、Desktopだけは同じcommitのコピーへ公開コンパニオンの管理用アダプターを適用します。
 
 人格同期は`SOUL.md`、`memories/MEMORY.md`、`memories/USER.md`のみ。本人用skill packageは別のAPI・outboxで明示的に登録・同期します。セッションDB、会話、資格情報、cache、任意の作業文書、home全体をアップロードしません。[データの取扱い](docs/PRIVACY.md)も確認してください。
 

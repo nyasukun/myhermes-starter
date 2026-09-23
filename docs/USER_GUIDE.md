@@ -27,7 +27,8 @@ Hermes本体、永続メモリ、認証や同期の処理はホスト側で動�
 | --- | --- |
 | 対応する端末 | macOSまたはUbuntu。Windows向けの手順はこの版に含みません |
 | Git | `git --version`が成功すること |
-| Python 3.11〜3.13 | 下の例は3.13。3.11または3.12を使う場合は、各コマンドの`python3.13`を置き換えること |
+| Python 3.11以上 | コンパニオンには`python3`を使う。固定Hermes runtimeにはPython 3.11〜3.13が必要。Python 3.14を使う場合も、Python 3.13を別途用意する |
+| Node.js（MacのGUI用） | Node.js 24.11以上の24.xとnpm。`node --version`と`npm --version`を確認する |
 | Docker | macOSはDocker Desktopなど、UbuntuはDocker Engineなど、会社が認めた環境が起動していること |
 | 安全な鍵の保管機能 | macOS Keychain、またはUbuntuのロック解除済みSecret Service |
 | 本人の利用権限 | 管理者がMyHermesメンバーとして登録した、本人の認証アカウント |
@@ -37,13 +38,22 @@ Hermes本体、永続メモリ、認証や同期の処理はホスト側で動�
 
 ```sh
 git --version
+python3 --version
 python3.13 --version
 docker version
 ```
 
+`python3`が3.14でもコンパニオンを使えます。固定Hermes runtime用の`python3.13`がないMacでは、Homebrewで併設できます。
+
+```sh
+brew install python@3.13 node@24
+```
+
 `docker version`でServerへ接続できない場合はDockerを起動して再確認します。
 必要なソフトがない場合や、UbuntuでSecret Serviceを利用できない場合は、端末の管理者へ導入を依頼してください。
-コンパニオンの利用だけならNode.jsは不要です。
+Macの標準手順ではHermes Desktopを使うため、Node.jsが必要です。
+Homebrewの`node@24`を使う場合は、その案内に従ってPATHを設定し、`node --version`と`npm --version`が成功することを確認してください。
+Ubuntuではこの版のGUI起動は未対応です。Node.jsを必要としない`myhermes start`でTUIを使います。
 
 初回はサンドボックス用の固定イメージを取得します。
 次のコマンドを本人のターミナルで実行し、完了を待ちます。
@@ -64,7 +74,7 @@ Dockerはこの端末の環境を使い、Hermes homeを保存するユーザー
 ```sh
 git clone --branch main https://github.com/nyasukun/myhermes-starter.git "$HOME/myhermes-starter"
 cd "$HOME/myhermes-starter"
-python3.13 -m venv .venv
+python3 -m venv .venv
 .venv/bin/python -m pip install .
 .venv/bin/myhermes --version
 ```
@@ -138,33 +148,59 @@ Codexが捕捉するツールやPTYでは実行しません。
 ブラウザで承認する前にターミナルの待機が終わった場合は、同じ`enroll`を再実行します。
 ブラウザが自動で開かない場合は`enroll --no-browser`を実行し、本人のターミナルに表示されたURLを開いてください。
 
-## 5. 毎日の起動と終了
+## 5. Hermes Desktopで起動し、終了後に同期を確認する
 
-Dockerを起動し、ターミナルで次を実行します。
-初回だけ、先に`start --dry-run`で起動予定を確認できます。
+Macでは、初回に一度だけ管理用のHermes Desktopを準備します。
+Node.jsが使えるターミナルで、次を実行してください。
+公開パッケージの取得とアプリのビルドには時間がかかります。
+失敗した場合は表示された原因を解消し、同じコマンドを再実行します。
 
 ```sh
 cd "$HOME/myhermes-starter"
-.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" start
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" prepare-desktop
 ```
 
-起動前に人格とskillsを同期してから、Hermesの会話が始まります。
-モデルの利用には、管理者が設定した会社relayが必要です。
-会社のOpenRouterキーを本人の端末へ設定する必要はありません。
-最初は「利用できるツールを確認して、短く自己紹介してください」のような依頼で応答を確認します。
+毎日の起動は、Dockerを起動してから次のコマンドを実行します。
 
-作業が終わったらHermesを終了し、ターミナルに終了結果が戻るまで待ってください。
-終了後にも人格とskillsを同期します。
-**Hermesの終了と、その後の同期の完了は別々に結果へ表示されます。**
-通信に失敗した変更は手元に残るので、接続回復後に次を実行します。
+```sh
+cd "$HOME/myhermes-starter"
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" desktop
+```
+
+`start --desktop`でも同じGUIを起動できます。
+起動前に人格とskillsを同期し、登録済みの保存先を使ってHermes Desktopが開きます。
+推論先の選択肢は**MyHermes**、モデルは**economy**です。
+会社のOpenRouterキーを端末へ設定する必要はありません。
+起動したターミナルは、GUIを使っている間も開いたままにしてください。
+
+自己紹介を同期する確認では、自分の名前、役割、回答の好みをGUIの会話に入力し、続けて次のように依頼します。
+
+> 今伝えた私の自己紹介と回答の好みを、今後の会話でも使うユーザー情報として、memoryツールのuserを使って永続メモリへ保存してください。保存が成功したか教えてください。
+
+**会話で伝えただけでは、会話履歴はポータルへ同期されません。**
+保存されたユーザー情報は`memories/USER.md`の同期対象になります。
+保存の承認を求められた場合は、本人が内容を確認して承認します。
+
+1. 作業が終わったら、Macのメニューから「Hermesを終了」、またはCommand＋Qでアプリを終了します。ウィンドウの赤いボタンで閉じるだけでは、アプリが残ることがあります。
+2. ターミナルへ戻り、終了後の同期が終わるまで待ちます。`persona_after_session.status`が`synchronized`なら人格・メモリの同期は完了です。skillsの結果は`skills_after_session`で確認します。
+3. ポータルを再読み込みし、「自分の人格・メモリ」の`memories/USER.md`に、保存した自己紹介や回答の好みがあることを確認します。
+
+**アプリの終了と、その後の同期の成功は別々に結果へ表示されます。**
+通信に失敗した変更は手元に残ります。GUIを終了し、接続が回復してから次を実行します。
 
 ```sh
 .venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" sync
 .venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" skills sync
 ```
 
-`start --offline`は起動前の同期を省略する指定です。
-モデル利用には引き続き会社relayへの通信が必要で、Dockerも必要です。
+毎回この`desktop`コマンドから起動してください。
+通常の`hermes desktop`やFinderから別のHermesを起動すると、MyHermesの開始・終了時同期を使えません。
+この管理用アプリの単体起動は停止し、starterからの起動を案内します。
+Desktop内での別プロファイル・リモート接続への切り替えと自動更新は使わず、更新は後述のコンパニオン手順で行います。
+
+`desktop --offline`は同期を省略し、変更を送信待ちとして残します。
+モデル利用には引き続き会社relayへの通信とDockerが必要です。
+Ubuntu、またはターミナル画面で利用する場合は`desktop`を`start`に置き換えます。推論先選択のGUI制限は管理用Desktopに適用されます。
 
 ## 6. サンドボックスへ資料を渡し、成果物を受け取る
 
@@ -337,6 +373,7 @@ git status --short
 git pull --ff-only origin main
 .venv/bin/python -m pip install .
 .venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" upgrade --python python3.13
+.venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" prepare-desktop
 .venv/bin/myhermes --state-dir "$HOME/.local/state/myhermes-work" start --dry-run
 ```
 

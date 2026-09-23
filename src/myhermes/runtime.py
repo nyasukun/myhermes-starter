@@ -54,7 +54,7 @@ def operating_system():
     raise CompanionError("unsupported_os", "The initial runtime supports macOS and Ubuntu only.", 3)
 
 
-def checked(command, *, cwd=None):
+def checked(command, *, cwd=None, env=None):
     if threading.current_thread() is not threading.main_thread():
         raise CompanionError("runtime_main_thread_required", "Runtime operations must run on the CLI's main thread.", 3)
     child, reason, deadline, requested_signal = None, None, None, None
@@ -89,6 +89,7 @@ def checked(command, *, cwd=None):
         child = subprocess.Popen(
             command,
             cwd=cwd,
+            env=env,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -218,7 +219,13 @@ def install_runtime(path: Path, python: str, *, dry_run=False):
         return {"status": "dry_run", "version": UPSTREAM_VERSION, "commit": UPSTREAM_COMMIT}
     version = checked([python, "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"])
     if version not in ("3.11", "3.12", "3.13"):
-        raise CompanionError("python_incompatible", "Pinned Hermes requires Python 3.11, 3.12 or 3.13.", 3)
+        raise CompanionError(
+            "python_incompatible",
+            "The pinned Hermes runtime requires Python 3.11, 3.12 or 3.13. "
+            "The MyHermes companion can run under Python 3.14; install a separate supported interpreter "
+            "and pass it with --python.",
+            3,
+        )
     if path.exists():
         verify_runtime(path, require_installed=False)
     else:
@@ -753,7 +760,33 @@ _TERMINATION_GRACE_SECONDS = 10
 _MANAGED_TERMINATION_GRACE_SECONDS = 30
 
 
-def _run_managed_child(command, *, env, stdin, stdout, stderr):
+def _stop_desktop_group(group):
+    """Drain only the newly owned GUI/backend group before session sync."""
+    deadline = time.monotonic() + _MANAGED_TERMINATION_GRACE_SECONDS
+    sent = None
+    while True:
+        # Ignore reparented zombies, which can no longer write memory. ps emits
+        # only group/status metadata, never arguments or conversation output.
+        result = subprocess.run(
+            ["/bin/ps", "-axo", "pgid=,stat="], capture_output=True, text=True, check=True, timeout=5
+        )
+        live = any(
+            len(parts) == 2 and parts[0] == str(group) and not parts[1].startswith("Z")
+            for parts in (line.split() for line in result.stdout.splitlines())
+        )
+        if not live:
+            return
+        kind = signal.SIGKILL if time.monotonic() >= deadline else signal.SIGTERM
+        if sent != kind:
+            try:
+                os.killpg(group, kind)
+            except ProcessLookupError:
+                return
+            sent = kind
+        time.sleep(0.1)
+
+
+def _run_managed_child(command, *, env, stdin, stdout, stderr, process_group=False):
     child, requested, deadline = None, None, None
     previous = {}
 
@@ -764,12 +797,15 @@ def _run_managed_child(command, *, env, stdin, stdout, stderr):
             deadline = time.monotonic() + _MANAGED_TERMINATION_GRACE_SECONDS
         if child is not None:
             try:
-                child.send_signal(signum)
+                if process_group:
+                    os.killpg(child.pid, signum)
+                else:
+                    child.send_signal(signum)
             except ProcessLookupError:
                 pass
 
     try:
-        for kind in (signal.SIGTERM, signal.SIGHUP):
+        for kind in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT) if process_group else (signal.SIGTERM, signal.SIGHUP):
             original = signal.getsignal(kind)
             try:
                 signal.signal(kind, forward)
@@ -778,7 +814,8 @@ def _run_managed_child(command, *, env, stdin, stdout, stderr):
                     "runtime_main_thread_required", "Managed startup must run on the CLI's main thread.", 3
                 ) from None
             previous[kind] = original
-        child = subprocess.Popen(command, env=env, stdin=stdin, stdout=stdout, stderr=stderr)
+        options = {"start_new_session": True} if process_group else {}
+        child = subprocess.Popen(command, env=env, stdin=stdin, stdout=stdout, stderr=stderr, **options)
         if requested is not None:
             # A signal during Popen construction is remembered until its child
             # handle exists. Never wait or extend the deadline in the handler.
@@ -816,13 +853,20 @@ def _run_managed_child(command, *, env, stdin, stdout, stderr):
                         child.kill()
                     except ProcessLookupError:
                         pass
+            if process_group:
+                _stop_desktop_group(child.pid)
         for kind, original in previous.items():
             signal.signal(kind, original)
 
 
-def start_runtime(config, *, api=None, state_directory=None, on_activity=None):
+def start_runtime(config, *, api=None, state_directory=None, on_activity=None, desktop=False):
     # One environment home; never account-kind profiles. Runtime conversation goes
     # directly to the owner's terminal, not the structured companion stdout.
+    if desktop:
+        from .desktop import desktop_environment, verify_desktop
+
+        desktop_source, desktop_command = verify_desktop(Path(config["upstream"]))
+        _launch_preflight(Path(config["hermes_home"]), desktop_source)
     try:
         # Buffered update mode requires seeking; terminal devices are streams.
         terminal = open("/dev/tty", "r+b", buffering=0)
@@ -844,8 +888,13 @@ def start_runtime(config, *, api=None, state_directory=None, on_activity=None):
             began, outcome = time.monotonic(), "failed"
             record("runtime_start", {"outcome": "ok"})
             try:
+                options = {}
+                if desktop:
+                    command = desktop_command
+                    environment = desktop_environment(config, environment, desktop_source)
+                    options["process_group"] = True
                 result = _run_managed_child(
-                    [str(command)], env=environment, stdin=terminal, stdout=terminal, stderr=terminal
+                    [str(command)], env=environment, stdin=terminal, stdout=terminal, stderr=terminal, **options
                 )
                 outcome = "ok" if result.returncode == 0 else "failed"
             except KeyboardInterrupt:

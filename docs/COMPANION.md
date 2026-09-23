@@ -6,10 +6,10 @@ Managed terminal, code and ordinary file tools use the mandatory local Docker sa
 
 ## Install and test without the private repository
 
-Python 3.11 is recommended; the companion accepts Python >=3.11, while the pinned Hermes runtime requires 3.11–3.13. A secure OS credential backend is required only for real enrollment/owner API calls. Unit tests use synthetic keys in memory and an explicit contract peer.
+The companion accepts Python >=3.11, including Python 3.14. The pinned Hermes runtime still requires Python 3.11–3.13, so install a supported interpreter alongside Python 3.14 and pass it to `install-runtime --python` and `upgrade --python`. A secure OS credential backend is required only for real enrollment/owner API calls. Unit tests use synthetic keys in memory and an explicit contract peer.
 
 ```sh
-python3.11 -m venv .venv
+python3 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
 .venv/bin/ruff check src tests
 .venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
@@ -198,3 +198,7 @@ The installer checks these interpreter properties in isolated mode and runs its 
 `--dry-run` performs no network request, changes no personality content and queues no update. Existing local state/lock infrastructure may be opened or initialized. Errors are stable JSON metadata; raw subprocess output and server bodies are suppressed. Logs are not a fallback diagnostic channel for secrets.
 
 Automated acceptance covers two independent homes, conservative stale/disjoint changes, conflicting content, tombstones, offline restart, lost acknowledgements, post-queue reverts/deletions, explicit and portal resolution, crash journaling, malicious filesystem objects, metadata-only output, standard ES256 signatures and DPoP binding. macOS Python unit tests ran locally; Ubuntu, actual native credential-store authorization, the complete upstream install/start, live Cloudflare Access, production deployment and real external account grants must be reported separately and must not be inferred from local contract tests.
+
+## Native Desktop startup
+
+On macOS, `myhermes prepare-desktop` builds the managed native GUI once; `myhermes desktop` / `myhermes start --desktop` use the existing enrolled start/session synchronization boundary. Run from the owner's terminal and quit the application with Command+Q before waiting for the final sync result. Both the GUI and its backend must stop before that snapshot. The managed picker exposes only MyHermes/economy. See [DESKTOP.md](DESKTOP.md) for Node requirements, the pinned adapter copy, build verification, restrictions and recovery scope.

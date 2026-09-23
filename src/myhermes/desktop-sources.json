@@ -1,0 +1,9 @@
+{
+  "agent/auxiliary_client.py": "1fae4b096f75878de687c8f1f6554b2458321a437a2febae45e317e58e3bb0b1",
+  "hermes_cli/inventory.py": "d8e7a2b008c6032ba02f3da7dbae437f12a9a3762eecd9a07bb8dae677e4a13e",
+  "hermes_cli/runtime_provider.py": "92802d9e089e829db36d0fac8bd1e61133ac9b6a1dbcbb63c18594c7a184aef2",
+  "hermes_cli/web_server_config.py": "02886dcd5081e156b6e24a00f60fc9dbf9d3d2ac77817d61d3ac1e3183c1fb26",
+  "hermes_cli/profiles.py": "8ca5eddec8fcacc7011e0a4da1fad61767d3cd96c74fc3159967a5e733eb9dff",
+  "hermes_constants.py": "6e6e47b32e4aa8350afbd69e39e7d9648edc2c14558ce7464c2ff7ba3453a3a0",
+  "apps/desktop/electron/main.ts": "8c23bb2187dbeb9ab65f924ade6bc7fb9fd8d4140373a7480426549c78508b21"
+}

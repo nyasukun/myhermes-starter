@@ -16,7 +16,7 @@ myhermes = "myhermes.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-myhermes = ["monitoring-manifest.json", "sync-status-manifest.json", "data/hermes-skills/*/SKILL.md"]
+myhermes = ["monitoring-manifest.json", "sync-status-manifest.json", "desktop-sources.json", "data/hermes-skills/*/SKILL.md"]
 
 [project.optional-dependencies]
 dev = ["ruff==0.15.6"]

@@ -16,6 +16,7 @@ from .api import API, validate_server
 from .auth import SecureKeyStore, assertion, public_jwk
 from .connection_cli import execute_connection_command, register_connection_commands
 from .errors import CompanionError
+from .desktop import prepare_desktop, start_desktop, verify_desktop
 from .local_config import (
     bound_config_read,
     canonical_identifier,
@@ -135,9 +136,16 @@ def parser():
     recover = sub.add_parser("recover")
     recover.add_argument("--choice", required=True, choices=("local", "target"))
     recover.add_argument("--dry-run", action="store_true")
-    start = sub.add_parser("start")
-    start.add_argument("--offline", action="store_true")
-    start.add_argument("--dry-run", action="store_true")
+    sub.add_parser("prepare-desktop", help="Build the managed native macOS Desktop").add_argument(
+        "--dry-run", action="store_true"
+    )
+    for name in ("start", "desktop"):
+        start = sub.add_parser(name)
+        start.set_defaults(command="start", desktop=name == "desktop")
+        start.add_argument("--offline", action="store_true")
+        start.add_argument("--dry-run", action="store_true")
+        if name == "start":
+            start.add_argument("--desktop", action="store_true", help="Launch managed native macOS Desktop")
     register_connection_commands(sub)
     register_skill_commands(sub)
     register_monitoring_commands(sub)
@@ -405,8 +413,10 @@ def _execute(args, on_activity=None):
                 },
             }
         stack.enter_context(file_lock(home / ".myhermes-session.lock"))
-        if args.command in ("install-runtime", "upgrade", "start") and not args.dry_run:
+        if args.command in ("install-runtime", "upgrade", "prepare-desktop", "start") and not args.dry_run:
             stack.enter_context(runtime_target_lock(Path(config["upstream"]), writer=args.command != "start"))
+        if args.command == "prepare-desktop":
+            return prepare_desktop(config, dry_run=args.dry_run)
         if args.command in ("install-runtime", "upgrade"):
             if args.command == "upgrade":
                 return upgrade_runtime(state, home, Path(config["upstream"]), args.python, dry_run=args.dry_run)
@@ -468,8 +478,11 @@ def _execute(args, on_activity=None):
             }
         if args.command == "start" and args.dry_run:
             verify_runtime(Path(config["upstream"]), require_installed=False)
+            if args.desktop:
+                verify_desktop(Path(config["upstream"]))
             return {
                 "status": "dry_run",
+                "interface": "desktop" if args.desktop else "terminal",
                 "sync_before_start": not args.offline,
                 "hermes_version": UPSTREAM_VERSION,
                 "terminal_backend": "docker",
@@ -487,7 +500,7 @@ def _execute(args, on_activity=None):
                 Synchronizer(state, home, api),
                 api,
                 offline=True,
-                launch=start_runtime,
+                launch=start_desktop if args.desktop else start_runtime,
                 skills=boundary_sync,
                 on_activity=on_activity,
             )
@@ -513,7 +526,7 @@ def _execute(args, on_activity=None):
                 sync,
                 api,
                 offline=False,
-                launch=start_runtime,
+                launch=start_desktop if args.desktop else start_runtime,
                 skills=boundary_sync,
                 on_activity=on_activity,
             )
