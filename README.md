@@ -16,6 +16,7 @@ Hermes Agentを本人の複数環境で利用するための公開コンパニ�
 - `packages/core/`: version固定で配布するTypeScript契約、監視検証・保存・集計、本文を保存しないrelay。
 - `schemas/`: 公開wire schema。
 - `.agents/skills/`: Codexから公開CLIを安全に利用するためのskills。
+- `.claude/skills/`: Claude Codeから使うskills。外形ヘルスチェックは本人の依頼文やMemoryにある接続先を使い、会社固有URLをrepoに含めません。
 - `hermes-skills/`: 同じHermes会話から接続を使い、本人用skillsを作成・更新する公開支援skills。Python wheelにも同梱します。
 - `tests/`: 架空データによるクライアント受入テスト。
 
