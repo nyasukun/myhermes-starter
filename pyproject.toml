@@ -11,6 +11,7 @@ dependencies = ["cryptography==46.0.5", "keyring==25.7.0", "PyYAML==6.0.3", "ope
 
 [project.scripts]
 myhermes = "myhermes.cli:main"
+myhermes-mcp = "myhermes.hermes_mcp:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -20,6 +21,7 @@ myhermes = ["monitoring-manifest.json", "sync-status-manifest.json", "desktop-so
 
 [project.optional-dependencies]
 dev = ["ruff==0.15.6"]
+mcp = ["mcp==1.26.0"]
 
 [tool.ruff]
 line-length = 120

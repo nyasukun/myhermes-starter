@@ -38,6 +38,8 @@ npm run check
 
 ## 利用を始める
 
+Claude Code・Codexから本人のHermesを呼び出す場合は、[MyHermes MCP連携](docs/HERMES_MCP.md)を参照してください。`myhermes-mcp`は既存の環境認証・同期・Docker設定を使うstdioサーバーです。
+
 初回導入、Dockerサンドボックスでの日常利用、資料の受け渡し、ポータル、更新、2台目の登録までの手順は[利用者ガイド](docs/USER_GUIDE.md)にあります。通常の`myhermes start`はDockerを使い、利用できない場合は起動を止めます。
 
 本人認証済みのMyHermesサーバーを用意した後、所有者自身の端末で設定・登録します。URLやパスは利用する環境に置き換えてください。以下の例に資格情報はありません。

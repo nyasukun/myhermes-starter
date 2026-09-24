@@ -287,7 +287,7 @@ def owner_api(config):
     return API(config["server"], key, installation_id)
 
 
-def _execute(args, on_activity=None):
+def _execute(args, on_activity=None, runtime_launcher=None):
     directory = Path(os.path.abspath(args.state_dir))
     if args.command == "re-enroll":
         return re_enroll(directory, args, enroll=enroll, owner_api=owner_api)
@@ -500,7 +500,7 @@ def _execute(args, on_activity=None):
                 Synchronizer(state, home, api),
                 api,
                 offline=True,
-                launch=start_desktop if args.desktop else start_runtime,
+                launch=runtime_launcher or (start_desktop if args.desktop else start_runtime),
                 skills=boundary_sync,
                 on_activity=on_activity,
             )
@@ -526,7 +526,7 @@ def _execute(args, on_activity=None):
                 sync,
                 api,
                 offline=False,
-                launch=start_desktop if args.desktop else start_runtime,
+                launch=runtime_launcher or (start_desktop if args.desktop else start_runtime),
                 skills=boundary_sync,
                 on_activity=on_activity,
             )
@@ -563,23 +563,23 @@ def _execute(args, on_activity=None):
         raise CompanionError("unknown_command", "Unsupported command.")
 
 
-def execute(args):
+def execute(args, *, runtime_launcher=None):
     with identity_command(
         args.state_dir, recovery=args.command == "re-enroll", dry_run=getattr(args, "dry_run", False)
     ):
-        return _execute_monitored(args)
+        return _execute_monitored(args, runtime_launcher=runtime_launcher)
 
 
-def _execute_monitored(args):
+def _execute_monitored(args, *, runtime_launcher=None):
     kind = command_kind(args)
     if getattr(args, "dry_run", False) or (kind is None and args.command != "start"):
-        return _execute(args)
+        return _execute(args, runtime_launcher=runtime_launcher)
     directory = Path(os.path.abspath(args.state_dir))
     monitoring = CommandMonitoring(directory, bound_config_read, owner_api, offline=getattr(args, "offline", False))
     started = time.monotonic()
     result = None
     try:
-        result = _execute(args, on_activity=monitoring.record)
+        result = _execute(args, on_activity=monitoring.record, runtime_launcher=runtime_launcher)
         if kind:
             attrs = {"outcome": outcome(result), "duration_ms": duration_ms(started)}
             if kind == "tool":
