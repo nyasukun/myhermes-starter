@@ -194,7 +194,9 @@ class RuntimeRelayAcceptance(unittest.TestCase):
                 on_activity=lambda kind, attrs: events.append((kind, attrs)),
             ) as (_, environment):
                 overlay = json.loads((Path(environment["HERMES_MANAGED_DIR"]) / "config.yaml").read_text())
-                self.assertEqual(overlay["plugins"]["enabled"], ["owner-plugin", "myhermes-monitoring"])
+                self.assertEqual(
+                    overlay["plugins"]["enabled"], ["owner-plugin", "myhermes-monitoring", "myhermes-connections"]
+                )
                 self.assertEqual(environment["MYHERMES_MONITORING_URL"].split("/v1")[1], "/myhermes/tool-events")
                 installed = self.home / "plugins/myhermes-monitoring/__init__.py"
                 self.assertNotIn(environment["AUXILIARY_MYHERMES_API_KEY"], installed.read_text())

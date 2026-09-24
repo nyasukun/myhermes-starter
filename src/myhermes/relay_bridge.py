@@ -214,7 +214,15 @@ class RelayBridge:
     """
 
     def __init__(
-        self, api, *, allow_local_http=False, timeout=120.0, max_requests=1000, max_connections=8, on_activity=None
+        self,
+        api,
+        *,
+        allow_local_http=False,
+        timeout=120.0,
+        max_requests=1000,
+        max_connections=8,
+        on_activity=None,
+        connection_directory=None,
     ):
         if not 0 < timeout <= 300 or type(max_requests) is not int or not 1 <= max_requests <= 10000:
             raise CompanionError("relay_configuration_rejected", "Invalid relay bridge limits.")
@@ -225,6 +233,7 @@ class RelayBridge:
         self.timeout, self.max_requests, self.max_connections = timeout, max_requests, max_connections
         self.session_token = secrets.token_urlsafe(32)
         self.on_activity = on_activity
+        self.connection_directory = connection_directory
         self._ids, self._digests = {}, {}
         self._ids_lock = threading.Lock()
         self._calls, self._calls_lock = set(), threading.Lock()
@@ -359,8 +368,13 @@ class _Handler(BaseHTTPRequestHandler):
         local_tool = (
             self.command == "POST" and self.path == "/v1/myhermes/tool-events" and bridge.on_activity is not None
         )
+        local_directory = (
+            self.command == "POST"
+            and self.path in ("/v1/myhermes/connections", "/v1/myhermes/connection-report")
+            and bridge.connection_directory is not None
+        )
         upstream_path = paths.get((self.command, self.path))
-        if upstream_path is None and not local_tool:
+        if upstream_path is None and not local_tool and not local_directory:
             raise _Failure(404, "relay_path_rejected")
         if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Expect"):
             raise _Failure(400, "relay_framing_rejected")
@@ -374,7 +388,9 @@ class _Handler(BaseHTTPRequestHandler):
         if not re.fullmatch(r"[0-9]{1,10}", length):
             raise _Failure(400, "relay_framing_rejected")
         length = int(length)
-        if length > (1024 if local_tool else MAX_REQUEST_BYTES) or (self.command == "GET" and length):
+        if length > (1024 if local_tool else 16384 if local_directory else MAX_REQUEST_BYTES) or (
+            self.command == "GET" and length
+        ):
             raise _Failure(413, "relay_request_too_large")
         if self.command == "GET":
             return upstream_path, None, False, None
@@ -384,6 +400,24 @@ class _Handler(BaseHTTPRequestHandler):
         if len(raw) != length:
             raise _Failure(400, "relay_incomplete_request")
         value, canonical = _json(raw)
+        if local_directory:
+            from .connection_directory import snapshot
+
+            try:
+                if self.path.endswith("/connection-report"):
+                    snapshot(value)
+                else:
+                    if set(value) != {"snapshot", "integration_id"}:
+                        raise ValueError()
+                    snapshot(value["snapshot"])
+                    if value["integration_id"] is not None and (
+                        not isinstance(value["integration_id"], str)
+                        or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?", value["integration_id"])
+                    ):
+                        raise ValueError()
+            except (CompanionError, ValueError, TypeError):
+                raise _Failure(400, "connection_metadata_rejected") from None
+            return self.path, value, False, None
         if local_tool:
             if set(value) != {"tool_kind", "outcome", "duration_ms"}:
                 raise _Failure(400, "relay_tool_metadata_rejected")
@@ -411,6 +445,16 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             path, raw, stream, request_id = self._input()
             bridge = self.server.bridge
+            if path in ("/v1/myhermes/connections", "/v1/myhermes/connection-report"):
+                result = bridge.connection_directory.runtime(
+                    "report" if path.endswith("/connection-report") else "guide", raw
+                )
+                encoded = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode()
+                if len(encoded) > 2_000_000:
+                    raise _Failure(502, "connection_directory_too_large")
+                self._headers(200, "application/json", length=len(encoded))
+                self.wfile.write(encoded)
+                return
             if path is None:
                 bridge.activity("tool", raw)
                 self._headers(202, "application/json", length=17)

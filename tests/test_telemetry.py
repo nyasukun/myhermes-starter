@@ -15,6 +15,7 @@ import uuid
 from cryptography.hazmat.primitives.asymmetric import ec
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
+from myhermes import __version__
 from myhermes.errors import CompanionError
 from myhermes.telemetry import AUDIT_PATH, TRACES_PATH, Telemetry
 from myhermes.telemetry_contract import canonical, digest
@@ -107,7 +108,7 @@ class TelemetryTests(unittest.TestCase):
         resource = proto.resource_spans[0]
         self.assertEqual(
             {entry.key: entry.value.string_value for entry in resource.resource.attributes},
-            {"service.name": "myhermes", "service.version": "0.3.0"},
+            {"service.name": "myhermes", "service.version": __version__},
         )
         span = resource.scope_spans[0].spans[0]
         self.assertEqual(span.name, "myhermes.activity")

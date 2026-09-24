@@ -15,9 +15,17 @@ def session():
     home = os.environ.get("MYHERMES_DESKTOP_HOME", "")
     url = urlsplit(base)
     if (
-        url.scheme != "http" or url.hostname != "127.0.0.1" or not url.port
-        or url.path != "/v1" or url.query or url.fragment or url.username or url.password
-        or not token or not home or os.environ.get("HERMES_HOME") != home
+        url.scheme != "http"
+        or url.hostname != "127.0.0.1"
+        or not url.port
+        or url.path != "/v1"
+        or url.query
+        or url.fragment
+        or url.username
+        or url.password
+        or not token
+        or not home
+        or os.environ.get("HERMES_HOME") != home
         or not os.environ.get("HERMES_MANAGED_DIR")
     ):
         raise ValueError("Start this Desktop with myhermes desktop.")
@@ -27,12 +35,20 @@ def session():
 def inventory():
     session()
     return {
-        "provider": "myhermes", "model": "economy",
-        "providers": [{
-            "slug": "myhermes", "name": "MyHermes", "models": ["economy"],
-            "total_models": 1, "is_current": True, "is_user_defined": True,
-            "authenticated": True, "configured": True,
-        }],
+        "provider": "myhermes",
+        "model": "economy",
+        "providers": [
+            {
+                "slug": "myhermes",
+                "name": "MyHermes",
+                "models": ["economy"],
+                "total_models": 1,
+                "is_current": True,
+                "is_user_defined": True,
+                "authenticated": True,
+                "configured": True,
+            }
+        ],
     }
 
 
@@ -46,8 +62,12 @@ def resolve(*, requested=None, explicit_api_key=None, explicit_base_url=None, ta
     ):
         raise ValueError("MyHermes Desktop allows only MyHermes / economy.")
     return {
-        "provider": "myhermes", "requested_provider": "myhermes", "model": "economy",
-        "api_mode": "chat_completions", "base_url": base, "api_key": token,
+        "provider": "myhermes",
+        "requested_provider": "myhermes",
+        "model": "economy",
+        "api_mode": "chat_completions",
+        "base_url": base,
+        "api_key": token,
         "source": "myhermes",
     }
 

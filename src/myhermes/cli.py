@@ -126,6 +126,11 @@ def parser():
         command = sub.add_parser(name)
         command.add_argument("--python", default="python3.11")
         command.add_argument("--dry-run", action="store_true")
+    updater = sub.add_parser("self-update", help="Check or explicitly install the company-selected companion wheel")
+    update_mode = updater.add_mutually_exclusive_group()
+    update_mode.add_argument("--check", action="store_true")
+    update_mode.add_argument("--dry-run", action="store_true")
+    update_mode.add_argument("--apply", action="store_true")
     sub.add_parser("backup").add_argument("--dry-run", action="store_true")
     backups = sub.add_parser("backups")
     backups.add_argument("--limit", type=int, default=20)
@@ -354,6 +359,10 @@ def _execute(args, on_activity=None, runtime_launcher=None):
                 )
             return {"status": "configured", "os": current_os, "hermes_version": UPSTREAM_VERSION}
     config = bound_config_read(directory)
+    if args.command == "self-update":
+        from .companion_update import update_companion
+
+        return update_companion(args, config, directory, owner_api(config))
     if args.command == "monitoring":
         return monitoring_command(args, config, directory, owner_api=owner_api)
     if args.command in ("templates", "connections"):
@@ -564,8 +573,11 @@ def _execute(args, on_activity=None, runtime_launcher=None):
 
 
 def execute(args, *, runtime_launcher=None):
-    with identity_command(
-        args.state_dir, recovery=args.command == "re-enroll", dry_run=getattr(args, "dry_run", False)
+    from .companion_update import companion_admission
+
+    with (
+        companion_admission(writer=args.command == "self-update" and getattr(args, "apply", False)),
+        identity_command(args.state_dir, recovery=args.command == "re-enroll", dry_run=getattr(args, "dry_run", False)),
     ):
         return _execute_monitored(args, runtime_launcher=runtime_launcher)
 

@@ -3,10 +3,36 @@
 import asyncio
 import os
 import signal
+import subprocess
 
 from .errors import CompanionError
 
 MAX_OUTPUT_BYTES = 1_048_576
+
+
+async def wait_group_stopped(group):
+    # Waiting for the group leader does not wait for a descendant that has
+    # closed its pipes. SIGKILL delivery is asynchronous, so drain live group
+    # members before releasing the request. ps exposes only group/state here.
+    deadline = asyncio.get_running_loop().time() + 5
+    while True:
+        try:
+            result = subprocess.run(
+                ["/bin/ps", "-axo", "pgid=,stat="], capture_output=True, text=True, timeout=2, check=True
+            )
+        except (OSError, subprocess.SubprocessError):
+            raise CompanionError(
+                "mcp_cleanup_unconfirmed", "Could not confirm MCP worker group termination.", 3
+            ) from None
+        live = any(
+            len(parts) == 2 and parts[0] == str(group) and not parts[1].startswith(("Z", "X"))
+            for parts in (line.split() for line in result.stdout.splitlines())
+        )
+        if not live:
+            return
+        if asyncio.get_running_loop().time() >= deadline:
+            raise CompanionError("mcp_cleanup_unconfirmed", "MCP worker group did not terminate in time.", 3)
+        await asyncio.sleep(0.01)
 
 
 async def run_process(command, workspace, environment, stdin, timeout, *, termination_grace=0.1):
@@ -77,3 +103,4 @@ async def run_process(command, workspace, environment, stdin, timeout, *, termin
                         task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 await process.wait()
+                await wait_group_stopped(process.pid)

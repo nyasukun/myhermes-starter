@@ -23,7 +23,8 @@ class DesktopPolicyAcceptance(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.root = Path(self.stack.enter_context(tempfile.TemporaryDirectory())).resolve()
         self.env = {
-            "HERMES_HOME": str(self.root), "MYHERMES_DESKTOP_HOME": str(self.root),
+            "HERMES_HOME": str(self.root),
+            "MYHERMES_DESKTOP_HOME": str(self.root),
             "HERMES_MANAGED_DIR": str(self.root / "overlay"),
             "MYHERMES_DESKTOP_RELAY_URL": "http://127.0.0.1:18999/v1",
             "AUXILIARY_MYHERMES_API_KEY": "synthetic-session-key",
@@ -34,8 +35,11 @@ class DesktopPolicyAcceptance(unittest.TestCase):
         self.assertEqual([row["slug"] for row in desktop_policy.inventory()["providers"]], ["myhermes"])
         self.assertEqual(desktop_policy.resolve()["base_url"], self.env["MYHERMES_DESKTOP_RELAY_URL"])
         for overrides in (
-            {"requested": "openrouter"}, {"requested": "custom"}, {"requested": "moa"},
-            {"target_model": "other-model"}, {"explicit_base_url": "https://provider.invalid/v1"},
+            {"requested": "openrouter"},
+            {"requested": "custom"},
+            {"requested": "moa"},
+            {"target_model": "other-model"},
+            {"explicit_base_url": "https://provider.invalid/v1"},
             {"explicit_api_key": "other-key"},
         ):
             with self.subTest(overrides=overrides), self.assertRaises(ValueError):
@@ -60,11 +64,17 @@ class DesktopPolicyAcceptance(unittest.TestCase):
         overlay = self.root / "overlay"
         overlay.mkdir()
         (overlay / "config.yaml").write_text('{"model":{"base_url":"http://127.0.0.1:18999/v1"}}')
-        env = {**self.env, "HERMES_DESKTOP_REMOTE_URL": "https://unmanaged.invalid",
-               "HERMES_DESKTOP_BOOT_FAKE": "1", "NODE_OPTIONS": "--require bad.js", "PYTHONPATH": "/unmanaged",
-               "_HERMES_FORCE_MYHERMES_DESKTOP_HOME": "/unmanaged"}
-        result = desktop_environment({"hermes_home": str(self.root), "upstream": str(self.root / "runtime")},
-                                     env, self.root / "adapter")
+        env = {
+            **self.env,
+            "HERMES_DESKTOP_REMOTE_URL": "https://unmanaged.invalid",
+            "HERMES_DESKTOP_BOOT_FAKE": "1",
+            "NODE_OPTIONS": "--require bad.js",
+            "PYTHONPATH": "/unmanaged",
+            "_HERMES_FORCE_MYHERMES_DESKTOP_HOME": "/unmanaged",
+        }
+        result = desktop_environment(
+            {"hermes_home": str(self.root), "upstream": str(self.root / "runtime")}, env, self.root / "adapter"
+        )
         self.assertNotIn("HERMES_DESKTOP_REMOTE_URL", result)
         self.assertNotIn("HERMES_DESKTOP_BOOT_FAKE", result)
         self.assertNotIn("NODE_OPTIONS", result)
@@ -94,13 +104,19 @@ class DesktopPolicyAcceptance(unittest.TestCase):
                     for node in tree.body:
                         if isinstance(node, ast.FunctionDef) and node.name in PYTHON_EDITS[name]:
                             node.decorator_list = []
-                            module = ast.Module(body=[ast.ImportFrom(module="__future__", names=[
-                                ast.alias(name="annotations")], level=0), node], type_ignores=[])
+                            module = ast.Module(
+                                body=[
+                                    ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")], level=0),
+                                    node,
+                                ],
+                                type_ignores=[],
+                            )
                             namespace = {}
                             exec(compile(ast.fix_missing_locations(module), name, "exec"), namespace)
                             if node.name == "build_models_payload":
-                                self.assertEqual(namespace[node.name](None, include_unconfigured=True)["provider"],
-                                                 "myhermes")
+                                self.assertEqual(
+                                    namespace[node.name](None, include_unconfigured=True)["provider"], "myhermes"
+                                )
                             if node.name == "resolve_runtime_provider":
                                 self.assertEqual(namespace[node.name]()["model"], "economy")
                                 with self.assertRaises(ValueError):
@@ -132,13 +148,17 @@ class PinnedDesktopBackendAcceptance(unittest.TestCase):
 
             atomic_json(overlay / "config.yaml", _managed_config("http://127.0.0.1:18999/v1"))
             env = {
-                "HOME": str(root), "PATH": os.defpath, "HERMES_HOME": str(home),
-                "MYHERMES_DESKTOP_HOME": str(home), "HERMES_MANAGED_DIR": str(overlay),
+                "HOME": str(root),
+                "PATH": os.defpath,
+                "HERMES_HOME": str(home),
+                "MYHERMES_DESKTOP_HOME": str(home),
+                "HERMES_MANAGED_DIR": str(overlay),
                 "MYHERMES_DESKTOP_RELAY_URL": "http://127.0.0.1:18999/v1",
-                "AUXILIARY_MYHERMES_API_KEY": "synthetic-key", "PYTHONPATH": str(source),
+                "AUXILIARY_MYHERMES_API_KEY": "synthetic-key",
+                "PYTHONPATH": str(source),
                 "PYTHONDONTWRITEBYTECODE": "1",
             }
-            code = r'''
+            code = r"""
 import asyncio,json,os,socket
 from pathlib import Path
 attempts=[]
@@ -173,9 +193,10 @@ assert saved['success']
 assert 'fictional owner' in (Path(os.environ['HERMES_HOME'])/'memories/USER.md').read_text()
 assert not attempts
 print('PINNED_DESKTOP_BACKEND_OK')
-'''
-            result = subprocess.run([str(interpreter), "-c", code], cwd=source, env=env,
-                                    capture_output=True, text=True, timeout=60)
+"""
+            result = subprocess.run(
+                [str(interpreter), "-c", code], cwd=source, env=env, capture_output=True, text=True, timeout=60
+            )
             self.assertEqual(result.returncode, 0, "Pinned backend fixture failed: " + result.stderr[-5000:])
             self.assertIn("PINNED_DESKTOP_BACKEND_OK", result.stdout)
 
@@ -185,9 +206,9 @@ class DesktopSessionAcceptance(unittest.TestCase):
         self.fixture = test_session_sync.SessionSyncAcceptance()
         self.addCleanup(self.fixture.doCleanups)
         self.fixture.setUp()
-        self.fixture.stack.enter_context(patch("myhermes.desktop.verify_desktop", return_value=(
-            self.fixture.upstream, self.fixture.child
-        )))
+        self.fixture.stack.enter_context(
+            patch("myhermes.desktop.verify_desktop", return_value=(self.fixture.upstream, self.fixture.child))
+        )
 
     def test_gui_quit_captures_memory_and_syncs_through_the_existing_relay(self):
         t = self.fixture
@@ -211,13 +232,20 @@ class DesktopSessionAcceptance(unittest.TestCase):
             "while True: time.sleep(.01)\n"
         )
         t.child.write_text(
-            "#!" + sys.executable + "\nimport os,subprocess,time\nfrom pathlib import Path\n"
-            + "subprocess.Popen([" + repr(sys.executable) + "," + repr(str(backend)) + "])\n"
+            "#!"
+            + sys.executable
+            + "\nimport os,subprocess,time\nfrom pathlib import Path\n"
+            + "subprocess.Popen(["
+            + repr(sys.executable)
+            + ","
+            + repr(str(backend))
+            + "])\n"
             "root=Path(os.environ['HERMES_HOME'])\n"
             "while not (root/'backend-ready').exists(): time.sleep(.01)\n"
         )
         code, result = t.command("start", "--desktop")
         self.assertEqual(code, 0)
         self.assertEqual(result["persona_after_session"]["status"], "synchronized")
-        self.assertEqual(t.persona.current["files"]["memories/USER.md"]["content"],
-                         "Fictional owner prefers concise replies.")
+        self.assertEqual(
+            t.persona.current["files"]["memories/USER.md"]["content"], "Fictional owner prefers concise replies."
+        )

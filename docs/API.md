@@ -1,6 +1,6 @@
-# Public API contracts — companion/core 0.3.0
+# Public API contracts — companion/core 0.4.0
 
-Public implementation: `@myhermes/core` 0.3.0 in `packages/core`. JSON wire schemas live in `schemas/`. Persona synchronization, templates/connections, skill packages, relay and monitoring each have explicit contracts. An incompatible wire change needs a new schema version; adding an allowlisted sync path or monitoring field is a public contract change, not a private configuration override.
+Public implementation: `@myhermes/core` 0.4.0 in `packages/core`. JSON wire schemas live in `schemas/`. Persona synchronization, templates/connections, skill packages, relay and monitoring each have explicit contracts. An incompatible wire change needs a new schema version; adding an allowlisted sync path or monitoring field is a public contract change, not a private configuration override.
 
 [Applied revision status](SYNC_STATUS.md) adds device-only `POST /v1/sync/ack` and authenticated `GET /v1/sync/status-manifest`. The explicit client report and server receipt time are separate from upload receipt metadata and do not assert the current local filesystem state. The versioned public sync-status manifest declares the metadata collection and its readers.
 
@@ -94,3 +94,5 @@ Treat 401/403 as authentication or authorization failure, not a retry loop. Enro
 | Member administration | Browser administrator metadata and explicit Access-subject binding. [MEMBER_ADMINISTRATION.md](MEMBER_ADMINISTRATION.md) defines the public validation contract. Admin rights do not authorize reading or using another person's content/accounts. |
 
 Company-specific endpoints and UI consume the pinned public implementations. Runtime maintenance is local: installation, fixed-pin repair, allowlisted personality backup/restore and managed boundaries are documented in [COMPANION.md](COMPANION.md). Anomaly detection, automatic sanctions, profile splitting by account kind and arbitrary template shell execution are outside this implementation.
+
+Company requirements, per-installation MCP connection snapshots and company setup guides are defined by [CONNECTION_DIRECTORY.md](CONNECTION_DIRECTORY.md). These additive endpoints use schema version `1`; existing template, binding and sync contracts are unchanged. Companion release selection and the self-update path are documented in [COMPANION_UPDATE.md](COMPANION_UPDATE.md).

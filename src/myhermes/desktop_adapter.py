@@ -50,7 +50,9 @@ PYTHON_EDITS = {
 # All replacements are unique in the reviewed pin. A changed upstream source
 # fails before any edit or build; updating the pin requires a new review.
 JS_EDITS = [
-    ("const USER_DATA_OVERRIDE =", """// MyHermes managed adapter: only the starter supplies a live session.
+    (
+        "const USER_DATA_OVERRIDE =",
+        """// MyHermes managed adapter: only the starter supplies a live session.
 if (!process.env.MYHERMES_DESKTOP_RELAY_URL || !process.env.AUXILIARY_MYHERMES_API_KEY ||
     !process.env.MYHERMES_DESKTOP_HOME || !process.env.HERMES_MANAGED_DIR ||
     process.env.HERMES_HOME !== process.env.MYHERMES_DESKTOP_HOME) {
@@ -59,8 +61,11 @@ if (!process.env.MYHERMES_DESKTOP_RELAY_URL || !process.env.AUXILIARY_MYHERMES_A
   throw new Error('MyHermes starter session required.')
 }
 app.relaunch = () => { throw new Error('Quit and run myhermes desktop again.') }
-const USER_DATA_OVERRIDE ="""),
-    ("function resolveHermesBackend(backendArgs) {", """function resolveHermesBackend(backendArgs) {
+const USER_DATA_OVERRIDE =""",
+    ),
+    (
+        "function resolveHermesBackend(backendArgs) {",
+        """function resolveHermesBackend(backendArgs) {
   const managedRoot = process.env.HERMES_DESKTOP_HERMES_ROOT
   const managedPython = process.env.HERMES_DESKTOP_PYTHON
   if (!managedRoot || !managedPython || !fileExists(managedPython)) {
@@ -71,40 +76,71 @@ const USER_DATA_OVERRIDE ="""),
     args: ['-m', 'hermes_cli.main', ...backendArgs],
     env: { PYTHONPATH: managedRoot }, root: managedRoot, bootstrap: false, shell: false
   }
-"""),
-    ("async function checkUpdates() {", """async function checkUpdates() {
+""",
+    ),
+    (
+        "async function checkUpdates() {",
+        """async function checkUpdates() {
   return { supported: false, reason: 'myhermes-managed', message: 'Use myhermes upgrade and prepare-desktop.' }
-"""),
-    ("async function applyUpdates(opts: { stopSafeBlockers?: boolean } = {}) {", """async function applyUpdates(opts: { stopSafeBlockers?: boolean } = {}) {
+""",
+    ),
+    (
+        "async function applyUpdates(opts: { stopSafeBlockers?: boolean } = {}) {",
+        """async function applyUpdates(opts: { stopSafeBlockers?: boolean } = {}) {
   throw new Error('Use myhermes upgrade and prepare-desktop.')
-"""),
+""",
+    ),
     ("function readActiveDesktopProfile() {", "function readActiveDesktopProfile() {\n  return 'default'\n"),
-    ("function resolveHermesHome() {", """function resolveHermesHome() {
+    (
+        "function resolveHermesHome() {",
+        """function resolveHermesHome() {
   return process.env.MYHERMES_DESKTOP_HOME
-"""),
-    ("function writeActiveDesktopProfile(name) {", """function writeActiveDesktopProfile(name) {
+""",
+    ),
+    (
+        "function writeActiveDesktopProfile(name) {",
+        """function writeActiveDesktopProfile(name) {
   if (name && name !== 'default') throw new Error('MyHermes uses the enrolled home only.')
-"""),
-    ("function readDesktopConnectionConfig() {", """function readDesktopConnectionConfig() {
+""",
+    ),
+    (
+        "function readDesktopConnectionConfig() {",
+        """function readDesktopConnectionConfig() {
   return { mode: 'local', remote: {}, profiles: {} }
-"""),
-    ("async function saveRegistryConnection(input: any = {}) {", """async function saveRegistryConnection(input: any = {}) {
+""",
+    ),
+    (
+        "async function saveRegistryConnection(input: any = {}) {",
+        """async function saveRegistryConnection(input: any = {}) {
   throw new Error('MyHermes Desktop uses the enrolled local connection.')
-"""),
-    ("function writeDesktopConnectionConfig(config) {", """function writeDesktopConnectionConfig(config) {
+""",
+    ),
+    (
+        "function writeDesktopConnectionConfig(config) {",
+        """function writeDesktopConnectionConfig(config) {
   throw new Error('MyHermes Desktop uses the enrolled local connection.')
-"""),
-    ("function readDesktopConnectionsRegistry() {", """function readDesktopConnectionsRegistry() {
+""",
+    ),
+    (
+        "function readDesktopConnectionsRegistry() {",
+        """function readDesktopConnectionsRegistry() {
   return migrateV1ToRegistry({ mode: 'local', remote: {}, profiles: {} })
-"""),
-    ("async function resolveRemoteBackend(profile, options: { poolKey?: string; primary?: boolean } = {}) {",
-     "async function resolveRemoteBackend(profile, options: { poolKey?: string; primary?: boolean } = {}) {\n"
-     "  return null\n"),
-    ("async function spawnPoolBackend(profile, entry, opts: { forceLocal?: boolean; poolKey?: string } = {}) {",
-     "async function spawnPoolBackend(profile, entry, opts: { forceLocal?: boolean; poolKey?: string } = {}) {\n"
-     "  if (profile && profile !== 'default') throw new Error('MyHermes uses the enrolled home only.')\n"),
-    ("localModels: process.argv.includes('--local') || process.platform === 'win32' || process.platform === 'darwin'",
-     "localModels: false"),
+""",
+    ),
+    (
+        "async function resolveRemoteBackend(profile, options: { poolKey?: string; primary?: boolean } = {}) {",
+        "async function resolveRemoteBackend(profile, options: { poolKey?: string; primary?: boolean } = {}) {\n"
+        "  return null\n",
+    ),
+    (
+        "async function spawnPoolBackend(profile, entry, opts: { forceLocal?: boolean; poolKey?: string } = {}) {",
+        "async function spawnPoolBackend(profile, entry, opts: { forceLocal?: boolean; poolKey?: string } = {}) {\n"
+        "  if (profile && profile !== 'default') throw new Error('MyHermes uses the enrolled home only.')\n",
+    ),
+    (
+        "localModels: process.argv.includes('--local') || process.platform === 'win32' || process.platform === 'darwin'",
+        "localModels: false",
+    ),
     ("TERMINAL_CWD: hermesCwd,", "TERMINAL_CWD: '/workspace',"),
 ]
 

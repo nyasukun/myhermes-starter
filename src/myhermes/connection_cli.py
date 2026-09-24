@@ -1,4 +1,4 @@
-"""GitHub connection command surface; credentials are never parser arguments."""
+"""Company connection guidance and native GitHub operations; no credential arguments."""
 
 from pathlib import Path
 
@@ -11,8 +11,13 @@ def register_connection_commands(sub):
     show = template_commands.add_parser("show")
     show.add_argument("template_id")
     show.add_argument("--version", required=True)
-    connections = sub.add_parser("connections", help="Explicit per-account GitHub connections")
+    connections = sub.add_parser("connections", help="Company setup guides, environment status and GitHub connections")
     commands = connections.add_subparsers(dest="connection_command", required=True)
+    commands.add_parser("requirements", help="Fetch current company-prescribed services and setup guides")
+    status = commands.add_parser("status", help="Inspect this installation's reported MCP and GitHub connection states")
+    status.add_argument("--after")
+    guide = commands.add_parser("guide", help="Read a company connection guide and this environment's status")
+    guide.add_argument("integration_id")
     listing = commands.add_parser("list")
     listing.add_argument("--after")
     show = commands.add_parser("show")
@@ -72,6 +77,23 @@ def register_connection_commands(sub):
 
 
 def execute_connection_command(args, config, directory, *, owner_api):
+    if args.command == "connections" and args.connection_command in ("requirements", "status", "guide"):
+        from .connection_directory import ConnectionDirectory
+        from .connection_schema import identifier
+        from .errors import CompanionError
+
+        client = ConnectionDirectory(owner_api(config))
+        if args.connection_command == "requirements":
+            return client.catalog()
+        value = client.status(getattr(args, "after", None))
+        if args.connection_command == "guide":
+            identifier(args.integration_id)
+            value["integrations"] = [
+                row for row in value["integrations"] if row["integration_id"] == args.integration_id
+            ]
+            if not value["integrations"]:
+                raise CompanionError("integration_not_found", "That company connection is not enabled.", 3)
+        return value
     from .connections import connection_command
 
     return connection_command(args, config, directory, owner_api=owner_api)

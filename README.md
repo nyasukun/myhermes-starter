@@ -6,6 +6,8 @@ Hermes Agentを本人の複数環境で利用するための公開コンパニ�
 
 - 人格同期はrevision、競合、offline outbox、冪等な再送、削除履歴を扱います。
 - GitHubは会社・取引先・個人の複数接続を、同じ会話から明示的な接続IDとリポジトリで読み取れます。資格情報は環境ごとのnative secure storeに保持します。
+- 会社指定の接続ガイドを取得し、各Hermes環境のMCP接続状態をMyHermesへ報告します。同梱スキルと`myhermes_connections`ツールが未接続時の案内を行います。[接続状態と会社ガイド](docs/CONNECTION_DIRECTORY.md)を参照してください。
+- `self-update --check`で会社の指定するCompanion版を確認し、`self-update --apply`でハッシュを検証して更新できます。[更新手順と旧版からの導入](docs/COMPANION_UPDATE.md)を参照してください。
 - skillsは参照資料・スクリプト・バイナリを含むpackageを扱い、会社配布と本人用を別の権限で管理します。本人用の自動全社公開は行いません。
 - relayは通常応答・SSE・function tools・構造化出力、モデル/プロバイダー許可、利用量の確定と未取得を扱います。監視の受信検証・保存・集計は公開module内で定義します。異常検知や自動処分は実装しません。
 - `myhermes start`はDockerによる端末・コード・対応するファイル操作のサンドボックスを既定とし、利用できない場合は起動を止めます。Hermes本体と認証・同期はホストで動きます。[サンドボックスの設定と範囲](docs/SANDBOX.md)を参照してください。

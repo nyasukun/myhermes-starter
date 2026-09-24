@@ -671,9 +671,36 @@ def _environment_hint(user_config, installation_id):
         + installation
         + " and host OS="
         + host_os
-        + "; record an observed remote backend OS/path separately."
+        + "; record an observed remote backend OS/path separately. "
+        "Use the myhermes_connections tool and bundled myhermes-connections skill to check this "
+        "installation's company-required connections and retrieve current setup guides."
     )
     return owner_hint + "\n\n" + guide if owner_hint else guide
+
+
+def _connections_plugin(home, user_config, enabled):
+    config = user_config.get("plugins") or {}
+    if not isinstance(config, dict):
+        raise CompanionError("runtime_plugin_rejected", "Hermes plugins must be a mapping.", 3)
+    names, disabled = config.get("enabled", []), config.get("disabled", [])
+    if (
+        not isinstance(names, list)
+        or not isinstance(disabled, list)
+        or any(not isinstance(n, str) for n in names + disabled)
+    ):
+        raise CompanionError("runtime_plugin_rejected", "Hermes plugin lists must contain names.", 3)
+    if any(name.endswith("myhermes-connections") for name in disabled):
+        raise CompanionError(
+            "runtime_plugin_disabled", "Enable the managed MyHermes connections plugin before startup.", 3
+        )
+    files = {
+        "__init__.py": Path(__file__).with_name("hermes_connections_plugin.py").read_bytes(),
+        "plugin.yaml": b'{"name":"myhermes-connections","version":"1.0.0","description":"Company connection guides and metadata-only runtime status"}\n',
+    }
+    from .managed_plugin import install_connections_plugin
+
+    install_connections_plugin(home, files)
+    return list(dict.fromkeys([*(names if enabled is None else enabled), "myhermes-connections"]))
 
 
 @contextmanager
@@ -710,6 +737,7 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
             "MYHERMES_SESSION_TOKEN",
             "MYHERMES_STATE_DIR",
             "MYHERMES_MONITORING_URL",
+            "MYHERMES_CONNECTIONS_URL",
             "HERMES_ENVIRONMENT_HINT",
             "HERMES_DOCKER_BINARY",
         )
@@ -733,8 +761,16 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
     if state_directory is not None:
         environment["MYHERMES_STATE_DIR"] = str(safe_path(Path(state_directory)))
     temporary_parent = private_dir(home / ".myhermes-runtime")
+    from .connection_directory import ConnectionDirectory
+
     with _monitoring_plugin(home, user_config, on_activity is not None) as enabled_plugins:
-        with RelayBridge(api, allow_local_http=allow_local_http, on_activity=on_activity) as bridge:
+        enabled_plugins = _connections_plugin(home, user_config, enabled_plugins)
+        with RelayBridge(
+            api,
+            allow_local_http=allow_local_http,
+            on_activity=on_activity,
+            connection_directory=ConnectionDirectory(api),
+        ) as bridge:
             with tempfile.TemporaryDirectory(prefix="launch-", dir=temporary_parent) as temporary:
                 overlay = Path(temporary)
                 atomic_json(
@@ -745,6 +781,7 @@ def relay_runtime_session(config, *, api, state_directory=None, allow_local_http
                 )
                 environment["HERMES_MANAGED_DIR"] = str(overlay)
                 environment["AUXILIARY_MYHERMES_API_KEY"] = bridge.session_token
+                environment["MYHERMES_CONNECTIONS_URL"] = bridge.base_url + "/myhermes/connections"
                 if on_activity is not None:
                     environment["MYHERMES_MONITORING_URL"] = bridge.base_url + "/myhermes/tool-events"
                 try:
@@ -805,7 +842,9 @@ def _run_managed_child(command, *, env, stdin, stdout, stderr, process_group=Fal
                 pass
 
     try:
-        for kind in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT) if process_group else (signal.SIGTERM, signal.SIGHUP):
+        for kind in (
+            (signal.SIGTERM, signal.SIGHUP, signal.SIGINT) if process_group else (signal.SIGTERM, signal.SIGHUP)
+        ):
             original = signal.getsignal(kind)
             try:
                 signal.signal(kind, forward)

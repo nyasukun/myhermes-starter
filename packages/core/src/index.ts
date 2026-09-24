@@ -67,3 +67,5 @@ export * from './members.ts';
 export * from './relay-reconcile.ts';
 export * from './sync-status.ts';
 export * from './pagination.ts';
+export * from './connection-directory.ts';
+export * from './companion-release.ts';

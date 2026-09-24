@@ -16,7 +16,9 @@ from .files import atomic_bytes, atomic_json, private_dir, safe_path
 
 def _macos():
     if platform.system() != "Darwin":
-        raise CompanionError("desktop_os_unsupported", "Managed Desktop currently supports macOS. Use start for TUI.", 3)
+        raise CompanionError(
+            "desktop_os_unsupported", "Managed Desktop currently supports macOS. Use start for TUI.", 3
+        )
 
 
 def desktop_root(upstream):
@@ -90,8 +92,13 @@ def prepare_desktop(config, *, dry_run=False):
     upstream = safe_path(Path(config["upstream"]))
     verify_runtime(upstream)
     if dry_run:
-        return {"status": "dry_run", "interface": "desktop", "hermes_commit": UPSTREAM_COMMIT,
-                "downloads": "pinned_npm_dependencies", "production_access": False}
+        return {
+            "status": "dry_run",
+            "interface": "desktop",
+            "hermes_commit": UPSTREAM_COMMIT,
+            "downloads": "pinned_npm_dependencies",
+            "production_access": False,
+        }
     npm = shutil.which("npm")
     if not npm:
         raise CompanionError("desktop_node_required", "Install Node.js 24.11 or newer in the 24.x line, then retry.", 3)
@@ -110,14 +117,20 @@ def prepare_desktop(config, *, dry_run=False):
     _verify_source(root)
     # Build with a temporary home and no enrollment, relay, or native-store access.
     with tempfile.TemporaryDirectory(prefix="build-home-", dir=root.parent) as temporary:
-        env = {key: value for key, value in os.environ.items() if key in (
-            "PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "SHELL", "USER", "LOGNAME"
-        )}
-        env.update({
-            "HOME": temporary, "HERMES_HOME": temporary, "CSC_IDENTITY_AUTO_DISCOVERY": "false",
-            "npm_config_cache": str(private_dir(root.parent / "npm-cache")),
-            "ELECTRON_CACHE": str(private_dir(root.parent / "electron-cache")),
-        })
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key in ("PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "SHELL", "USER", "LOGNAME")
+        }
+        env.update(
+            {
+                "HOME": temporary,
+                "HERMES_HOME": temporary,
+                "CSC_IDENTITY_AUTO_DISCOVERY": "false",
+                "npm_config_cache": str(private_dir(root.parent / "npm-cache")),
+                "ELECTRON_CACHE": str(private_dir(root.parent / "electron-cache")),
+            }
+        )
         checked([npm, "ci", "--no-audit", "--no-fund"], cwd=root, env=env)
         checked([npm, "run", "pack"], cwd=root / "apps/desktop", env=env)
     _verify_source(root)
@@ -128,20 +141,26 @@ def prepare_desktop(config, *, dry_run=False):
 def desktop_environment(config, environment, root):
     home = safe_path(Path(config["hermes_home"]))
     # Clear Desktop boot/test/remote/dev-server hooks and interpreter injection.
-    env = {key: value for key, value in environment.items() if not key.upper().removeprefix("_HERMES_FORCE_").startswith((
-        "HERMES_DESKTOP_", "MYHERMES_DESKTOP_", "ELECTRON_", "NODE_", "PYTHONPATH", "PYTHONHOME"
-    ))}
+    env = {
+        key: value
+        for key, value in environment.items()
+        if not key.upper()
+        .removeprefix("_HERMES_FORCE_")
+        .startswith(("HERMES_DESKTOP_", "MYHERMES_DESKTOP_", "ELECTRON_", "NODE_", "PYTHONPATH", "PYTHONHOME"))
+    }
     overlay = json.loads((Path(env["HERMES_MANAGED_DIR"]) / "config.yaml").read_text())
-    env.update({
-        "HERMES_DESKTOP_HERMES_ROOT": str(root),
-        "HERMES_DESKTOP_PYTHON": str(Path(config["upstream"]) / ".venv/bin/python"),
-        "HERMES_DESKTOP_USER_DATA_DIR": str(private_dir(home / ".myhermes-desktop")),
-        "HERMES_DESKTOP_APP_NAME": "MyHermes",
-        "HERMES_DESKTOP_CDP_PORT": "off",
-        "MYHERMES_DESKTOP_HOME": str(home),
-        "MYHERMES_DESKTOP_RELAY_URL": overlay["model"]["base_url"],
-        "PYTHONPATH": str(root),
-    })
+    env.update(
+        {
+            "HERMES_DESKTOP_HERMES_ROOT": str(root),
+            "HERMES_DESKTOP_PYTHON": str(Path(config["upstream"]) / ".venv/bin/python"),
+            "HERMES_DESKTOP_USER_DATA_DIR": str(private_dir(home / ".myhermes-desktop")),
+            "HERMES_DESKTOP_APP_NAME": "MyHermes",
+            "HERMES_DESKTOP_CDP_PORT": "off",
+            "MYHERMES_DESKTOP_HOME": str(home),
+            "MYHERMES_DESKTOP_RELAY_URL": overlay["model"]["base_url"],
+            "PYTHONPATH": str(root),
+        }
+    )
     return env
 
 
